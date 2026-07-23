@@ -1,4 +1,8 @@
 * text=auto eol=lf
 
+# Windows launcher must keep CRLF; the wrapper jar must not be transformed.
+*.bat text eol=crlf
+*.jar binary
+
 # Conformance vectors are byte-exact oracles; never let them be transformed.
 vectors/*.bin binary
