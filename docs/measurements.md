@@ -49,6 +49,12 @@ about 9×. This is the number a memory and time seatbelt must be built from
 (`docs/decoder-design.md` has the formula), and the reason
 `DecodeOptions.withMaxResidualUnknowns` exists.
 
+`ldpc-staircase-dotnet` runs the same benchmark at the same parameters and loss seeds;
+its README carries the table. On this machine the .NET Release build is roughly 1.6×
+slower on the residual-solve column (3,262 ms at `K = 10,000`) and comparable
+elsewhere. Both implementations report identical residual widths and ranks at every
+size, which is a useful cross-check on top of the conformance vectors.
+
 ## Recovery margin D (the shared specification gates 7 and 8)
 
 `D` is the number of received symbols beyond `K` at the largest tolerable loss. 50
