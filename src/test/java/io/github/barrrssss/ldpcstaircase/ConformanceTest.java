@@ -23,24 +23,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
 
 /**
- * The cross-language conformance gate. Parses {@code vectors/MANIFEST.json} and asserts
- * that this implementation reproduces every PRNG, matrix, encode, and decode vector
- * byte-for-byte.
- *
- * <p>Today it guards this implementation against accidental drift. Once
- * {@code ldpc-staircase-dotnet} exists, the same vectors move to
- * {@code ldpc-staircase-spec} and this becomes the byte-exactness contract between the
- * two runtimes — the role {@code ConformanceTest} already plays in
+ * The cross-language conformance gate. Parses
+ * {@code external/ldpc-staircase-spec/vectors/MANIFEST.json} (pulled in via the git
+ * submodule) and asserts that this Java implementation reproduces every PRNG, matrix,
+ * encode, and decode vector byte-for-byte — the same contract with
+ * {@code ldpc-staircase-dotnet} that {@code ConformanceTest} enforces in
  * {@code erasure16-java}.
  *
- * <p>The vector {@code *.bin} files are raw bytes (marked {@code binary} in
- * {@code .gitattributes}); they are read verbatim, and every blob's SHA-256 is
+ * <p>The vector {@code *.bin} files are raw bytes (marked {@code binary} in the spec
+ * repo's {@code .gitattributes}); they are read verbatim, and every blob's SHA-256 is
  * rechecked so a corrupted checkout fails loudly here rather than skewing the
  * comparisons below.
  */
 class ConformanceTest {
 
-    private static final Path VECTORS_DIR = Paths.get("vectors").toAbsolutePath();
+    private static final Path VECTORS_DIR =
+            Paths.get("external", "ldpc-staircase-spec", "vectors").toAbsolutePath();
 
     private static Map<String, Object> manifest;
 
@@ -49,7 +47,7 @@ class ConformanceTest {
         Path manifestPath = VECTORS_DIR.resolve("MANIFEST.json");
         if (!Files.exists(manifestPath)) {
             fail("Conformance vectors not found at " + manifestPath
-                    + ". Run ./gradlew generateVectors to write them.");
+                    + ". Did the git submodule (external/ldpc-staircase-spec) get initialized?");
         }
 
         String json = new String(Files.readAllBytes(manifestPath), StandardCharsets.UTF_8);

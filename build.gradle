@@ -40,12 +40,14 @@ test {
     }
 }
 
-// Regenerates vectors/ from this implementation. Only run this deliberately: the
-// committed vectors are the cross-language oracle, so changing them is a spec change.
+// Regenerates the vectors inside the spec submodule. This repo is their single
+// generator; ldpc-staircase-dotnet only verifies them. Only run it deliberately —
+// the vectors are the cross-language oracle, so a diff here is a spec change that
+// must be reviewed and committed in ldpc-staircase-spec.
 tasks.register('generateVectors', JavaExec) {
     group = 'verification'
-    description = 'Regenerates the conformance vectors in vectors/ (spec change — review the diff).'
+    description = 'Regenerates the conformance vectors in the spec submodule (spec change — review the diff).'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'io.github.barrrssss.ldpcstaircase.VectorGenerator'
-    args = [project.file('vectors').absolutePath]
+    args = [project.file('external/ldpc-staircase-spec/vectors').absolutePath]
 }

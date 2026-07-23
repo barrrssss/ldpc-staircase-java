@@ -12,14 +12,15 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Writes the conformance vectors in {@code vectors/}: the raw {@code *.bin} blobs and
- * the {@code MANIFEST.json} that indexes them. Run through
+ * Writes the conformance vectors into the {@code ldpc-staircase-spec} submodule: the
+ * raw {@code *.bin} blobs and the {@code MANIFEST.json} that indexes them. Run through
  * {@code ./gradlew generateVectors}.
  *
- * <p>These vectors are the cross-language oracle. Regenerating them is a
+ * <p>This repository is the vectors' single generator; {@code ldpc-staircase-dotnet}
+ * only verifies them. They are the cross-language oracle, so regenerating them is a
  * <b>specification change</b>, not a routine step — a diff here means the .NET
- * implementation, once it exists, must change to match. Run it only when SPEC.md
- * itself changes, and review the diff.
+ * implementation must change to match. Run it only when SPEC.md itself changes,
+ * review the diff, and commit it in {@code ldpc-staircase-spec}.
  *
  * <p>Everything here is deterministic: symbol payloads come from {@link SplitMix64} at
  * fixed seeds, and the decode cases are found by a fixed-seed search over loss

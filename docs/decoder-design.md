@@ -1,8 +1,9 @@
 # Decoder design
 
 How `LdpcStaircase.decode` is built, what each stage costs, and why the profile is
-shaped the way it is. The normative behaviour is in [`SPEC.md`](../SPEC.md) section 6;
-this document is the reasoning behind it.
+shaped the way it is. The normative behaviour is in
+[`SPEC.md`](../external/ldpc-staircase-spec/SPEC.md) section 6; this document is the
+reasoning behind it.
 
 ## The two stages
 
