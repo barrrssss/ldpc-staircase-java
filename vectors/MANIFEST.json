@@ -1,0 +1,67 @@
+{
+  "manifestVersion": 1,
+  "description": "ldpc-staircase conformance vectors (constrained RFC 5170 LDPC-Staircase, the shared specification profile). Symbol payloads are produced by a documented SplitMix64 PRNG; see VectorGenerator. Every implementation must reproduce these byte-for-byte.",
+  "prngRaw": [
+    {"name": "raw-seed-1", "seed": 1, "values": [{"ordinal": 1, "value": 16807}, {"ordinal": 2, "value": 282475249}, {"ordinal": 3, "value": 1622650073}, {"ordinal": 10, "value": 2007237709}, {"ordinal": 100, "value": 892053144}, {"ordinal": 10000, "value": 1043618065}]},
+    {"name": "raw-seed-12345", "seed": 12345, "values": [{"ordinal": 1, "value": 207482415}, {"ordinal": 2, "value": 1790989824}, {"ordinal": 3, "value": 2035175616}, {"ordinal": 4, "value": 77048696}, {"ordinal": 5, "value": 24794531}]},
+    {"name": "raw-seed-max", "seed": 2147483646, "values": [{"ordinal": 1, "value": 2147466840}, {"ordinal": 2, "value": 1865008398}, {"ordinal": 3, "value": 524833574}]}
+  ],
+  "prngBounded": [
+    {"name": "bounded-seed-1-max100", "seed": 1, "maxv": 100, "draws": [0, 13, 75, 45, 53, 21, 4, 67, 67, 93, 38, 51, 83, 3, 5, 52]},
+    {"name": "bounded-seed-42-max65537", "seed": 42, "maxv": 65537, "draws": [21, 34379, 48197, 17256, 24656, 12863, 63955, 33575]},
+    {"name": "bounded-seed-987654321-max3", "seed": 987654321, "maxv": 3, "draws": [2, 2, 1, 1, 0, 1, 1, 2, 1, 1, 2, 0]}
+  ],
+  "matrix": [
+    {"name": "mtx-k16-r8-n1_3-s1", "k": 16, "r": 8, "n1": 3, "seed": 1, "entryCount": 63, "file": "mtx-k16-r8-n1_3-s1.bin"},
+    {"name": "mtx-k64-r32-n1_7-s42", "k": 64, "r": 32, "n1": 7, "seed": 42, "entryCount": 511, "file": "mtx-k64-r32-n1_7-s42.bin"},
+    {"name": "mtx-k10-r5-n1_3-smax", "k": 10, "r": 5, "n1": 3, "seed": 2147483646, "entryCount": 39, "file": "mtx-k10-r5-n1_3-smax.bin"},
+    {"name": "mtx-k1-r1-n1_1-s7", "k": 1, "r": 1, "n1": 1, "seed": 7, "entryCount": 2, "file": "mtx-k1-r1-n1_1-s7.bin"},
+    {"name": "mtx-k4-r0-n1_1-s1", "k": 4, "r": 0, "n1": 1, "seed": 1, "entryCount": 0, "file": "mtx-k4-r0-n1_1-s1.bin"},
+    {"name": "mtx-k250-r125-n1_7-s123456", "k": 250, "r": 125, "n1": 7, "seed": 123456, "entryCount": 1999, "file": "mtx-k250-r125-n1_7-s123456.bin"}
+  ],
+  "encode": [
+    {"name": "enc-k16-r8-n1_3-s1-len32", "k": 16, "r": 8, "n1": 3, "seed": 1, "symbolLen": 32, "sourceBlob": "enc-k16-r8-n1_3-s1-len32-src.bin", "repairBlob": "enc-k16-r8-n1_3-s1-len32-rep.bin"},
+    {"name": "enc-k64-r32-n1_7-s42-len17", "k": 64, "r": 32, "n1": 7, "seed": 42, "symbolLen": 17, "sourceBlob": "enc-k64-r32-n1_7-s42-len17-src.bin", "repairBlob": "enc-k64-r32-n1_7-s42-len17-rep.bin"},
+    {"name": "enc-k1-r1-n1_1-s7-len8", "k": 1, "r": 1, "n1": 1, "seed": 7, "symbolLen": 8, "sourceBlob": "enc-k1-r1-n1_1-s7-len8-src.bin", "repairBlob": "enc-k1-r1-n1_1-s7-len8-rep.bin"},
+    {"name": "enc-k4-r0-n1_1-s1-len16", "k": 4, "r": 0, "n1": 1, "seed": 1, "symbolLen": 16, "sourceBlob": "enc-k4-r0-n1_1-s1-len16-src.bin", "repairBlob": "enc-k4-r0-n1_1-s1-len16-rep.bin"},
+    {"name": "enc-k120-r60-n1_7-s31337-len24", "k": 120, "r": 60, "n1": 7, "seed": 31337, "symbolLen": 24, "sourceBlob": "enc-k120-r60-n1_7-s31337-len24-src.bin", "repairBlob": "enc-k120-r60-n1_7-s31337-len24-rep.bin"}
+  ],
+  "decode": [
+    {"name": "dec-nothing-missing", "encodeCase": "enc-k120-r60-n1_7-s31337-len24", "expectComplete": true, "expectStage": "NONE", "expectRecoveredSymbols": 0,
+     "missing": [],
+     "expectMissingSource": []},
+    {"name": "dec-all-repair-missing", "encodeCase": "enc-k120-r60-n1_7-s31337-len24", "expectComplete": true, "expectStage": "PEELING", "expectRecoveredSymbols": 60,
+     "missing": [120, 121, 122, 123, 124, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171, 172, 173, 174, 175, 176, 177, 178, 179],
+     "expectMissingSource": []},
+    {"name": "dec-source-band", "encodeCase": "enc-k120-r60-n1_7-s31337-len24", "expectComplete": true, "expectStage": "PEELING", "expectRecoveredSymbols": 30,
+     "missing": [0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116],
+     "expectMissingSource": []},
+    {"name": "dec-random-loss-peeling", "encodeCase": "enc-k120-r60-n1_7-s31337-len24", "expectComplete": true, "expectStage": "PEELING", "expectRecoveredSymbols": 30,
+     "missing": [1, 6, 11, 25, 32, 36, 37, 58, 59, 60, 62, 71, 84, 85, 91, 97, 99, 110, 112, 114, 118, 128, 130, 136, 151, 153, 167, 171, 177, 179],
+     "expectMissingSource": []},
+    {"name": "dec-max-loss-residual", "encodeCase": "enc-k120-r60-n1_7-s31337-len24", "expectComplete": true, "expectStage": "RESIDUAL_SOLVE", "expectRecoveredSymbols": 60,
+     "missing": [2, 3, 5, 8, 9, 10, 14, 16, 18, 22, 23, 28, 30, 32, 38, 40, 41, 46, 57, 58, 60, 62, 64, 66, 71, 79, 80, 85, 89, 93, 95, 105, 106, 109, 114, 119, 120, 121, 123, 129, 133, 134, 137, 138, 139, 141, 143, 147, 150, 151, 155, 159, 162, 163, 165, 167, 175, 176, 177, 178],
+     "expectMissingSource": []},
+    {"name": "dec-max-loss-failure", "encodeCase": "enc-k120-r60-n1_7-s31337-len24", "expectComplete": false, "expectStage": "RESIDUAL_SOLVE", "expectRecoveredSymbols": 31,
+     "missing": [1, 6, 10, 12, 22, 23, 28, 30, 32, 33, 38, 40, 41, 54, 57, 58, 62, 65, 66, 68, 69, 71, 73, 76, 83, 84, 85, 86, 87, 90, 91, 94, 95, 101, 102, 104, 111, 114, 115, 121, 122, 126, 127, 132, 134, 136, 140, 141, 144, 145, 146, 148, 155, 161, 162, 163, 166, 167, 173, 175],
+     "expectMissingSource": [10, 12, 22, 30, 33, 40, 41, 57, 65, 68, 69, 71, 76, 85, 86, 91, 95, 101, 102, 104, 111, 114]}
+  ],
+  "files": [
+    {"path": "enc-k1-r1-n1_1-s7-len8-rep.bin", "length": 8, "sha256": "53e1d362100c293d1af205f70a0eb51bdc4011597953b332236cbca138e4757b"},
+    {"path": "enc-k1-r1-n1_1-s7-len8-src.bin", "length": 8, "sha256": "53e1d362100c293d1af205f70a0eb51bdc4011597953b332236cbca138e4757b"},
+    {"path": "enc-k120-r60-n1_7-s31337-len24-rep.bin", "length": 1440, "sha256": "2cd1836592a0a00be802e3c2cf805c2b628d38d3ae476a5d17ef509e914cbc9d"},
+    {"path": "enc-k120-r60-n1_7-s31337-len24-src.bin", "length": 2880, "sha256": "edbb31e9890775080b5af48179c9fb35a61050338cf113b4628dab4ca4f70acd"},
+    {"path": "enc-k16-r8-n1_3-s1-len32-rep.bin", "length": 256, "sha256": "3931c32bd1d2aa0e64e6f3e442434d2784dbbb6de4594f6fd2d769b74bf7b185"},
+    {"path": "enc-k16-r8-n1_3-s1-len32-src.bin", "length": 512, "sha256": "7caa6c967e1c84109be5360268d76daeae1c2a663c67324f7874ebff5ef1dc9f"},
+    {"path": "enc-k4-r0-n1_1-s1-len16-rep.bin", "length": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+    {"path": "enc-k4-r0-n1_1-s1-len16-src.bin", "length": 64, "sha256": "8513ded35fec81b4129f46a51d9ff36d3e823cb21279d8b1853a519943e71d47"},
+    {"path": "enc-k64-r32-n1_7-s42-len17-rep.bin", "length": 544, "sha256": "0ff20b11d701aadba4abc97175024e6356b3ff9bc23b7756ac4d2cb5d79e4862"},
+    {"path": "enc-k64-r32-n1_7-s42-len17-src.bin", "length": 1088, "sha256": "79bd34044c59ebcddbb9840a923087e04697b49438e1b97321c847bdaf997c8c"},
+    {"path": "mtx-k1-r1-n1_1-s7.bin", "length": 20, "sha256": "54724da73553313bf74978b78cbf4b5bda8ff8b8053c028181e172fe3718e059"},
+    {"path": "mtx-k10-r5-n1_3-smax.bin", "length": 184, "sha256": "a9376ca17fd7f56d172e0372c81e41b375380048f16514c1354fbf3939b12d03"},
+    {"path": "mtx-k16-r8-n1_3-s1.bin", "length": 292, "sha256": "535a824b3d266233ec95a8989dd1087f802420f480de8eda3fde6c2a86544d7a"},
+    {"path": "mtx-k250-r125-n1_7-s123456.bin", "length": 8504, "sha256": "264b59cf8d65eeb2b0a47e6b14139ed96cc77ff245235fc372ff9c746831d788"},
+    {"path": "mtx-k4-r0-n1_1-s1.bin", "length": 8, "sha256": "8005f02d43fa06e7d0585fb64c961d57e318b27a145c857bcd3a6bdb413ff7fc"},
+    {"path": "mtx-k64-r32-n1_7-s42.bin", "length": 2180, "sha256": "8bffcc0feecf990e4be54b1158ce4ef40a451ca8d558d15813c49c7cd21c4075"}
+  ]
+}

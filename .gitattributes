@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Conformance vectors are byte-exact oracles; never let them be transformed.
+vectors/*.bin binary
