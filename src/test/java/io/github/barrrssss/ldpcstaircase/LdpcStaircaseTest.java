@@ -152,9 +152,8 @@ class LdpcStaircaseTest {
     }
 
     /**
-     * A whole lost sheet is a contiguous run of symbol indices — the correlated damage
-     * pattern that matters for printed backups, and the one an interleaved page layout
-     * exists to break up.
+     * One lost transport unit is a contiguous run of symbol indices — a correlated
+     * damage pattern that an interleaved physical layout exists to break up.
      */
     @Test
     void contiguousBandLossIsRecovered() {

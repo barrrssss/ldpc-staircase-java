@@ -22,7 +22,7 @@ import java.util.Arrays;
  */
 public final class LdpcStaircase {
 
-    /** The default profile value for {@code N1} (the shared specification). */
+    /** The default profile value for {@code N1}. */
     public static final int DEFAULT_LEFT_DEGREE = ParityCheckMatrix.DEFAULT_LEFT_DEGREE;
 
     private static final int[] NO_INDICES = new int[0];

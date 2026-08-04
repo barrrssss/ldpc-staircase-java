@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'io.github.barrrssss'
-version = '0.1.0'
+version = '0.1.1'
 
 java {
     // Java language level 11; compiled with the installed JDK (>= 11).

@@ -8,15 +8,14 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Measures the recovery margin {@code D}: how many symbols beyond {@code K} a decoder
- * actually needs, under the loss patterns printed paper produces. Opt-in — this is a
+ * actually needs under random and correlated physical loss patterns. Opt-in — this is a
  * measurement harness, not a regression test:
  *
  * <pre>./gradlew test --tests "*LossSimulation" -Dldpc.sim=200</pre>
  *
- * <p>The property's value is the trial count per configuration. Output feeds the shared specification's
- * validation gates 7 and 8 (choose a target failure probability, then measure {@code D}
- * under random, contiguous-band, whole-page, and mixed losses, and prove that correlated
- * damage does not concentrate into vulnerable graph regions).
+ * <p>The property's value is the trial count per configuration. The harness measures
+ * {@code D} under random, contiguous-band, whole-unit, and mixed losses so a caller can
+ * evaluate whether correlated damage concentrates into vulnerable graph regions.
  *
  * <p>Recovery is monotone in the received set — a superset of a sufficient set is
  * sufficient — so each trial binary-searches the removal order for the largest prefix
@@ -24,8 +23,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * {@code N}.
  *
  * <p>These numbers describe the codec on synthetic loss orders. They are <b>not</b> a
- * product guarantee: the real margin depends on the encoded set's page layout and
- * interleaving, which live outside this library.
+ * performance guarantee: the real margin depends on the transport's physical layout
+ * and interleaving, which live outside this library.
  */
 @EnabledIfSystemProperty(named = "ldpc.sim", matches = ".+")
 class LossSimulation {

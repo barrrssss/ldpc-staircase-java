@@ -66,10 +66,10 @@ memory ≈ m · ⌈u/64⌉ · 8 bytes   (coefficients)
 where `u` is the number of unknowns and `m` the number of unresolved rows.
 
 This is the decoder's only quadratic term and its entire risk surface. It is why
-`DecodeOptions.withMaxResidualUnknowns` exists: a product that must not exceed a heap
+`DecodeOptions.withMaxResidualUnknowns` exists: a caller that must not exceed a heap
 budget sets the bound and gets a reported failure instead of an `OutOfMemoryError`.
-the shared specification's gate 9 — derive an LDPC-specific memory seatbelt — is measured against this
-formula, not against the shared specification's Reed-Solomon one.
+An LDPC-specific resource limit should be derived from this formula rather than from
+a dense Reed–Solomon decoder's memory model.
 
 ### Why the residual solve is not optional
 
@@ -85,12 +85,12 @@ production setting.
 
 ## Why peeling and RREF, and nothing else
 
-the shared specification's profile deliberately excludes the techniques that would normally come next
+The shared profile deliberately excludes the techniques that would normally come next
 — permanent or predetermined inactivation, repeated elimination-to-peeling cycles,
-multiple symbols per packet. Those are the parts of the design space where the IPR
-picture is least settled (see the ADR's guardrails), and the constrained decoder is
-already fast enough for the product's operating point: at `K = 10,000` a clean peel is
-13 ms and a full-budget residual solve is about 2 s.
+and multiple symbols per packet. Those are the parts of the design space where the IPR
+picture is least settled, while the constrained decoder already performs well at large
+sizes: at `K = 10,000` a clean peel is 13 ms and a full-budget residual solve is about
+2 s.
 
 Repair variables are mapped before source variables in the residual system. A
 staircase repair variable occurs in at most two parity equations, so this simple

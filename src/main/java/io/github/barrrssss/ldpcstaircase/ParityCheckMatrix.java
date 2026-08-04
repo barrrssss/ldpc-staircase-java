@@ -20,7 +20,7 @@ import java.util.Arrays;
  */
 public final class ParityCheckMatrix {
 
-    /** The default profile value for {@code N1} (the shared specification). */
+    /** The default profile value for {@code N1}. */
     public static final int DEFAULT_LEFT_DEGREE = 7;
 
     private final int sourceSymbolCount;

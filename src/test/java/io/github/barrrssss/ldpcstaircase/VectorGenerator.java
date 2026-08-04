@@ -54,8 +54,8 @@ public final class VectorGenerator {
         json.append("{\n");
         json.append("  \"manifestVersion\": 1,\n");
         json.append("  \"description\": ").append(quote(
-                        "ldpc-staircase conformance vectors (constrained RFC 5170 LDPC-Staircase, "
-                                + "the shared specification profile). Symbol payloads are produced by a documented "
+                        "ldpc-staircase conformance vectors for the constrained RFC 5170 "
+                                + "LDPC-Staircase profile. Symbol payloads are produced by a documented "
                                 + "SplitMix64 PRNG; see VectorGenerator. Every implementation must "
                                 + "reproduce these byte-for-byte."))
                 .append(",\n");

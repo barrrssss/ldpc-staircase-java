@@ -5,25 +5,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
- * Times matrix construction, encoding, and decoding up to the shared specification's motivating case
+ * Times matrix construction, encoding, and decoding up to a large stress case
  * ({@code K = 10,000}, {@code R = 5,000}, {@code S = 818}). Opt-in — this is a
  * measurement harness, not a regression test:
  *
  * <pre>./gradlew test --tests "*DecoderBenchmark" -Dldpc.bench=1</pre>
  *
- * <p>Output feeds the shared specification's validation gate 5 (benchmark generation time and peak RAM
- * through {@code K = 10,000}). Times are wall clock on one warmed JVM; the heap figures
+ * <p>Output measures generation time and approximate heap use through
+ * {@code K = 10,000}. Times are wall clock on one warmed JVM; the heap figures
  * are a coarse allocated-bytes delta around each phase, not a real peak-RSS measurement,
  * so treat them as an order of magnitude rather than the seatbelt input.
  */
 @EnabledIfSystemProperty(named = "ldpc.bench", matches = ".+")
 class DecoderBenchmark {
 
-    private static final int SYMBOL_LENGTH = 818; // the V32-H QR payload of the shared specification
+    private static final int SYMBOL_LENGTH = 818; // representative medium payload
 
-    /** The physical Android restore reported on 2026-08-04 (QR V10-L, 100% redundancy). */
+    /** The large near-threshold mobile decode shape reported on 2026-08-04. */
     @Test
-    void benchmarkAndroidRestoreShape() {
+    void benchmarkLargeNearThresholdMobileDecode() {
         int k = 2_939;
         int r = 2_939;
         int received = 2_979;
@@ -37,7 +37,7 @@ class DecoderBenchmark {
         decode(codec, encoded, k + r, k + r - received, 0);
 
         System.out.println();
-        System.out.printf("Android restore shape: K=%d R=%d S=%d received=%d%n",
+        System.out.printf("Large near-threshold mobile shape: K=%d R=%d S=%d received=%d%n",
                 k, r, symbolLength, received);
         System.out.printf("%8s %12s %12s %12s%n", "seed", "decode ms", "residual u", "complete");
         for (int seed = 1; seed <= 5; seed++) {

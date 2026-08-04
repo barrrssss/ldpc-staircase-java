@@ -1,9 +1,8 @@
 # ldpc-staircase (Java)
 
 A general-purpose **systematic, fixed-rate LDPC-Staircase erasure code over GF(2)**,
-following the RFC 5170 section 6 core constrained to the profile selected by
-the shared profile
-(`SPEC.md`).
+following the RFC 5170 section 6 core constrained to the profile defined by the
+shared specification.
 Given `K` equal-length source symbols it produces `R` repair symbols by sparse XOR,
 and a decoder reconstructs the source from `K + D` received symbols.
 
@@ -18,9 +17,10 @@ The library is deliberately **abstract** — symbol byte arrays in, symbol byte 
 out. It performs no I/O, compression, encryption, framing, or page layout, and has
 **no runtime dependencies**.
 
-> **Not integrated.** No consuming application integration is included in this repository. The successor
-> encoded set format, the page interleaving, the measured recovery margin, and the
-> counsel-led IPR review of the shared specification all remain open.
+Current package version: **0.1.1**. It implements specification version **0.1.0**.
+See [`CHANGELOG.md`](CHANGELOG.md) for implementation changes and the shared
+specification's [`HISTORY.md`](external/ldpc-staircase-spec/HISTORY.md) for
+cross-implementation decisions.
 
 ## Not an MDS code
 
@@ -34,8 +34,8 @@ received-symbol count.
 Measured `D` on this implementation is in [`docs/measurements.md`](docs/measurements.md).
 The short version at `K = 2000`, `R = 1000`, `N1 = 7`: about 3 for scattered loss, and
 about 90 (p95 = 367) when the lost symbols are one contiguous run of indices. That gap
-is the whole argument for interleaving source and repair symbols across printed pages,
-and it belongs to the encoded set format rather than to this library.
+is the reason a physical transport should interleave source and repair symbols across
+failure domains; the transport layout remains outside this library.
 
 ## Profile (summary)
 
@@ -89,11 +89,10 @@ symbol arrays throw `LdpcStaircaseException`.
 
 ## Cost
 
-At `K = 10,000`, `R = 5,000`, `S = 818` — the case the shared specification's Reed-Solomon seatbelt
-rejects — this implementation builds the matrix in 14 ms, encodes in 9 ms, and peels a
-2,500-symbol loss in 13 ms. A decode that has to run the residual solve at the full
-repair budget takes about 2 s. See [`docs/measurements.md`](docs/measurements.md) for
-the full table and the caveats.
+At `K = 10,000`, `R = 5,000`, `S = 818`, this implementation builds the matrix in
+14 ms, encodes in 9 ms, and peels a 2,500-symbol loss in 13 ms. A decode that has to
+run the residual solve at the full repair budget takes about 2 s. See
+[`docs/measurements.md`](docs/measurements.md) for the full table and caveats.
 
 ## Build and test
 
@@ -128,5 +127,5 @@ Private, pre-release. The library is intentionally general-purpose and independe
 any consuming product. License TBD before any public release.
 
 Original work written from RFC 5170 and the internal specification. No OpenFEC or
-other third-party codec source was copied; see the shared specification for the provenance and IPR
-guardrails, which are engineering constraints and not a legal opinion.
+other third-party codec source was copied. The provenance and IPR guardrails are
+engineering constraints and not a legal opinion.
