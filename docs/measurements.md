@@ -83,8 +83,23 @@ non-normative:
 All Java tests and byte-exact cross-language vectors pass unchanged. A warmed HotSpot
 guard benchmark of the same shape remains sub-second (roughly 0.21–0.38 s across five
 received-set seeds after the change), confirming that Android ART was the main
-regression surface. The emulator ratio is not a phone performance promise; the final
-gate is the same benchmark on the weakest supported physical Android device.
+regression surface.
+
+The same harness was then run on the physical Galaxy S25 (`SM-S931B`) that reported
+the original 77-second restore. The optimized debug APK measured 720 ms on its first
+run and 711 ms on an immediate repeat. After strengthening the harness to compare all
+2,939 recovered source symbols byte-for-byte, one post-test-APK-install cold outlier
+measured 3.420 s and its immediate repeat measured 712 ms. A final run after an
+old/new APK A/B measured 710 ms. Every strengthened run recovered byte-identical
+source data, and Android reported thermal status 0 (no throttling).
+
+For completeness, the controlled old-code half of that A/B took 498.948 s wall time
+for the same fixed graph and received set (35% at 33.391 s, 50% at 167.583 s, and 75%
+at 453.709 s). The phone entered Doze during the headless old run, so that wall-time
+ratio overstates normal foreground slowdown and must not be presented as a user-facing
+speedup. The defensible product result is: the original physical foreground restore
+took about 77 seconds; the optimized exact-shape benchmark is normally about 0.71
+seconds and its worst observed cold outlier was 3.42 seconds.
 
 ## Recovery margin D (the shared specification gates 7 and 8)
 
