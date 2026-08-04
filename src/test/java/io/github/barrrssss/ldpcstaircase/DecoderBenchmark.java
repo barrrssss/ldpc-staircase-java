@@ -21,6 +21,32 @@ class DecoderBenchmark {
 
     private static final int SYMBOL_LENGTH = 818; // the V32-H QR payload of the shared specification
 
+    /** The physical Android restore reported on 2026-08-04 (QR V10-L, 100% redundancy). */
+    @Test
+    void benchmarkAndroidRestoreShape() {
+        int k = 2_939;
+        int r = 2_939;
+        int received = 2_979;
+        int symbolLength = 248;
+
+        LdpcStaircase codec = LdpcStaircase.create(k, r, 123_456_789, 7);
+        byte[][] encoded = encodedSymbols(codec, k, r, symbolLength, 0xB1A4_2026L);
+
+        // Warm the JVM before the reported measurements. Android device measurements
+        // use a separate instrumentation harness; this catches desktop regressions.
+        decode(codec, encoded, k + r, k + r - received, 0);
+
+        System.out.println();
+        System.out.printf("Android restore shape: K=%d R=%d S=%d received=%d%n",
+                k, r, symbolLength, received);
+        System.out.printf("%8s %12s %12s %12s%n", "seed", "decode ms", "residual u", "complete");
+        for (int seed = 1; seed <= 5; seed++) {
+            DecodeRun run = decode(codec, encoded, k + r, k + r - received, seed);
+            System.out.printf("%8d %12d %12d %12s%n", seed, run.millis,
+                    run.result.residualUnknownCount(), run.result.isComplete());
+        }
+    }
+
     @Test
     void benchmarkAcrossSizes() {
         int[] sizes = {1_000, 2_500, 5_000, 10_000};
@@ -47,14 +73,8 @@ class DecoderBenchmark {
         LdpcStaircase codec = LdpcStaircase.create(k, r, 20260723, 7);
         long buildMs = millis(buildStart);
 
-        byte[][] encoded = new byte[n][];
-        SplitMix64 rng = new SplitMix64(k);
-        for (int i = 0; i < k; i++) {
-            encoded[i] = rng.nextBytes(SYMBOL_LENGTH);
-        }
-
         long encodeStart = System.nanoTime();
-        codec.encode(encoded);
+        byte[][] encoded = encodedSymbols(codec, k, r, SYMBOL_LENGTH, k);
         long encodeMs = millis(encodeStart);
 
         DecodeRun light = decode(codec, encoded, n, r / 2, 1);
@@ -71,6 +91,18 @@ class DecoderBenchmark {
             System.out.println("  note: the full-budget decode did not complete (expected near the "
                     + "threshold): " + heavy.result);
         }
+    }
+
+    private static byte[][] encodedSymbols(LdpcStaircase codec, int k, int r, int symbolLength,
+            long dataSeed) {
+        byte[][] encoded = new byte[k + r][];
+        SplitMix64 rng = new SplitMix64(dataSeed);
+        for (int i = 0; i < k; i++) {
+            encoded[i] = rng.nextBytes(symbolLength);
+        }
+
+        codec.encode(encoded);
+        return encoded;
     }
 
     private static DecodeRun decode(LdpcStaircase codec, byte[][] encoded, int n, int lossCount,

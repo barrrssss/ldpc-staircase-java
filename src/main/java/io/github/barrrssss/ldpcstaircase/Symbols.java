@@ -46,6 +46,33 @@ final class Symbols {
         }
     }
 
+    /**
+     * Copies a byte symbol into packed words for a long-lived XOR-heavy operation.
+     *
+     * <p>The explicit byte packing is deliberately outside the residual solver's hot
+     * elimination loop. It lets that loop operate on ordinary {@code long[]} arrays,
+     * which ART can compile as direct array loads and stores instead of dispatching a
+     * byte-array {@link VarHandle} access for every word of every row operation.
+     */
+    static long[] toLongWords(byte[] data) {
+        long[] words = new long[(data.length + Long.BYTES - 1) / Long.BYTES];
+        for (int i = 0; i < data.length; i++) {
+            words[i >>> 3] |= (data[i] & 0xffL) << ((i & 7) << 3);
+        }
+
+        return words;
+    }
+
+    /** Copies the first {@code length} bytes of packed words back into a symbol. */
+    static byte[] fromLongWords(long[] words, int length) {
+        byte[] data = new byte[length];
+        for (int i = 0; i < length; i++) {
+            data[i] = (byte) (words[i >>> 3] >>> ((i & 7) << 3));
+        }
+
+        return data;
+    }
+
     /** True when every byte is zero — the parity-check condition for one equation. */
     static boolean isZero(byte[] data) {
         final int length = data.length;

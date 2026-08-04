@@ -379,6 +379,7 @@ public final class LdpcStaircase {
         final boolean[] present;
         final int[] unknown;
         final byte[][] accumulator;
+        final int symbolLength;
         int recoveredSource;
         int recoveredTotal;
 
@@ -387,6 +388,7 @@ public final class LdpcStaircase {
             this.present = present;
             this.unknown = new int[repairSymbolCount];
             this.accumulator = new byte[repairSymbolCount][];
+            this.symbolLength = symbolLength;
 
             for (int i = 0; i < repairSymbolCount; i++) {
                 int[] columns = matrix.rowColumns[i];
@@ -519,18 +521,13 @@ public final class LdpcStaircase {
         int[] columnOfSymbol = new int[n];
         Arrays.fill(columnOfSymbol, -1);
         int[] symbolOfColumn = new int[unknownCount];
-        int next = 0;
-        for (int c = 0; c < n; c++) {
-            if (!state.present[c]) {
-                columnOfSymbol[c] = next;
-                symbolOfColumn[next] = c;
-                next++;
-            }
-        }
+        int next = mapUnknownColumns(state, columnOfSymbol, symbolOfColumn,
+                sourceSymbolCount, n, 0);
+        mapUnknownColumns(state, columnOfSymbol, symbolOfColumn, 0, sourceSymbolCount, next);
 
         int words = (unknownCount + 63) >>> 6;
         long[][] coefficients = new long[rowCount][];
-        byte[][] rightHandSides = new byte[rowCount][];
+        long[][] rightHandSides = new long[rowCount][];
         int filled = 0;
         for (int i = 0; i < repairSymbolCount && filled < rowCount; i++) {
             if (state.unknown[i] < 2) {
@@ -547,7 +544,8 @@ public final class LdpcStaircase {
             }
 
             coefficients[filled] = bits;
-            rightHandSides[filled] = state.accumulator[i];
+            rightHandSides[filled] = Symbols.toLongWords(state.accumulator[i]);
+            state.accumulator[i] = null;
             filled++;
         }
 
@@ -574,7 +572,7 @@ public final class LdpcStaircase {
                 long[] bits = coefficients[pivot];
                 coefficients[pivot] = coefficients[rank];
                 coefficients[rank] = bits;
-                byte[] rhs = rightHandSides[pivot];
+                long[] rhs = rightHandSides[pivot];
                 rightHandSides[pivot] = rightHandSides[rank];
                 rightHandSides[rank] = rhs;
             }
@@ -611,10 +609,31 @@ public final class LdpcStaircase {
                 continue;
             }
 
-            state.recover(symbolOfColumn[pivotColumn[row]], rightHandSides[row]);
+            state.recover(symbolOfColumn[pivotColumn[row]],
+                    Symbols.fromLongWords(rightHandSides[row], state.symbolLength));
         }
 
         return rank;
+    }
+
+    /**
+     * Adds unknown symbols in {@code [from, to)} to the residual column mapping.
+     * Repair symbols are mapped before source symbols: a staircase repair variable
+     * occurs in at most two parity equations, so eliminating it first preserves the
+     * sparse structure instead of prematurely filling the matrix while pivoting on
+     * higher-degree source variables.
+     */
+    private static int mapUnknownColumns(DecodeState state, int[] columnOfSymbol,
+            int[] symbolOfColumn, int from, int to, int next) {
+        for (int symbol = from; symbol < to; symbol++) {
+            if (!state.present[symbol]) {
+                columnOfSymbol[symbol] = next;
+                symbolOfColumn[next] = symbol;
+                next++;
+            }
+        }
+
+        return next;
     }
 
     private static int countMissingSource(boolean[] present, int sourceSymbolCount) {
