@@ -52,13 +52,15 @@ the profile can forbid a second peeling pass — RREF already captures every lin
 consequence of the residual system, so nothing is left for peeling to find.
 
 Coefficients are packed as `long` bitsets (`⌈u/64⌉` words per row), so the coefficient
-half of a row operation is ~64 columns per instruction. The expensive half is the
-right-hand side: one `S`-byte symbol XOR per eliminated row.
+half of a row operation is ~64 columns per instruction. Residual right-hand sides are
+also copied once into packed `long[]` arrays; this keeps the millions of elimination
+XORs on direct array operations and avoids Android ART's byte-array `VarHandle`
+dispatch in the hot loop.
 
 ```text
 time   ≈ u · m · (u/64 words + S bytes)
 memory ≈ m · ⌈u/64⌉ · 8 bytes   (coefficients)
-       + m · S bytes            (right-hand sides — reused peeling accumulators, not new)
+       + m · ⌈S/8⌉ · 8 bytes    (packed right-hand sides)
 ```
 
 where `u` is the number of unknowns and `m` the number of unresolved rows.
@@ -90,16 +92,20 @@ picture is least settled (see the ADR's guardrails), and the constrained decoder
 already fast enough for the product's operating point: at `K = 10,000` a clean peel is
 13 ms and a full-budget residual solve is about 2 s.
 
-If the residual solve ever becomes the binding cost, the first move should be a
-sparsity-aware pivot order, which reduces fill-in without leaving the profile.
+Repair variables are mapped before source variables in the residual system. A
+staircase repair variable occurs in at most two parity equations, so this simple
+sparsity-aware order eliminates the low-degree part first and avoids needless early
+fill-in without changing RREF or the recovered result.
 
 ## Symbol arithmetic
 
-Everything the code does to payloads is XOR. `Symbols.xorInto` uses a `long`-wide
+Everything the code does to payloads is XOR. Encoding and peeling use a `long`-wide
 `VarHandle` view over `byte[]` for eight bytes per instruction, with a byte tail.
 Native byte order is safe precisely because XOR is byte-order agnostic: the view
 permutes both operands and the result identically, so the bytes written are the same
-on every platform.
+on every platform. The quadratic residual stage converts each live right-hand side
+once and uses direct `long[]` XOR instead; the recovered symbols are converted back to
+their exact byte length after RREF.
 
 ## What determines the graph
 

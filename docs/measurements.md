@@ -1,8 +1,8 @@
 # Measurements
 
-First-run numbers from the opt-in harnesses in `src/test`. They exist to inform
-the shared specification's validation gates; none of them is a product guarantee, and none of them was
-taken on the platform that matters most (a weak Android phone).
+First-run numbers from the opt-in harnesses in `src/test` and on-device
+instrumentation benchmark. They exist to inform the shared specification's validation gates; none of
+them is a product guarantee.
 
 - Date: 2026-07-23
 - Machine: AMD Ryzen 7 5700U (8C/16T), Windows 11 Pro
@@ -54,6 +54,37 @@ its README carries the table. On this machine the .NET Release build is roughly 
 slower on the residual-solve column (3,262 ms at `K = 10,000`) and comparable
 elsewhere. Both implementations report identical residual widths and ranks at every
 size, which is a useful cross-check on top of the conformance vectors.
+
+## Android residual-solve regression (2026-08-04)
+
+A physical Galaxy S25 debug build exposed a runtime-specific regression that the
+warmed desktop JVM concealed: restoring a real `K = 2,939`, `R = 2,939`, `S = 248`
+encoded set from 2,979 captured symbols took about 77 seconds. Progress reached roughly
+35% quickly and then crawled because late Gauss-Jordan pivots operate on dense rows.
+
+The opt-in instrumentation benchmark reproduces that shape with a fixed
+graph and fixed scattered K+40 received set. On the API 36 x86_64 `PaperVaultTest`
+emulator, in a debug APK, the same benchmark was measured before and after commit
+`272726d`:
+
+| implementation | decode | 35% | 50% | 75% | 100% |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| byte-array VarHandle RHS, source-first pivots | 390.514 s | 20.749 s | 115.139 s | 276.855 s | 390.511 s |
+| packed `long[]` RHS, repair-first pivots | 2.455 s | 2.076 s | 2.098 s | 2.184 s | 2.452 s |
+
+That is a **159×** reduction in measured decode time. The two changes are deliberately
+non-normative:
+
+- residual right-hand sides are copied once into ordinary `long[]` arrays, removing
+  repeated byte-array `VarHandle` dispatch from the elimination hot loop; and
+- unknown staircase repair variables are pivoted before source variables because
+  each occurs in at most two parity equations, reducing early matrix fill-in.
+
+All Java tests and byte-exact cross-language vectors pass unchanged. A warmed HotSpot
+guard benchmark of the same shape remains sub-second (roughly 0.21–0.38 s across five
+received-set seeds after the change), confirming that Android ART was the main
+regression surface. The emulator ratio is not a phone performance promise; the final
+gate is the same benchmark on the weakest supported physical Android device.
 
 ## Recovery margin D (the shared specification gates 7 and 8)
 
@@ -110,7 +141,7 @@ Against the shared specification's gates, these runs cover 5 (desktop time), and
 patterns). Not covered here:
 
 - peak RAM as a real measurement rather than the model in `docs/decoder-design.md`;
-- Android recovery time and heap on a weak device;
+- optimized Android recovery time and heap on a weak physical device;
 - a chosen target decoding-failure probability, and enough trials to measure `D`
   against it;
 - an interleaving scheme to test, as opposed to the synthetic page grouping above; and
