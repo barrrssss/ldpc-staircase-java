@@ -109,12 +109,18 @@ git submodule update --init   # pull the spec and conformance vectors
 reproduction of every PRNG, matrix, encode, and decode vector (and verifies the
 SHA-256 of each blob).
 
-Two opt-in measurement harnesses are excluded from normal runs:
+Three opt-in measurement harnesses are excluded from normal runs:
 
 ```sh
 ./gradlew test --tests "*DecoderBenchmark" -Dldpc.bench=1
 ./gradlew test --tests "*LossSimulation" -Dldpc.sim=200
+./gradlew test --tests "*RecoveryMarginCalibration" -Dldpc.calibrate=2000
 ```
+
+The calibration harness uses a test-only structural rank oracle to measure many
+scattered capture sets efficiently. Its fitted D90 formula, committed datasets,
+caller-bound warning, and reproduction options are documented in
+[`docs/calibration/README.md`](docs/calibration/README.md).
 
 `./gradlew generateVectors` rewrites the vectors inside the submodule. That is a
 **specification change** — they are the cross-language oracle — so run it only

@@ -30,9 +30,11 @@ test {
         exceptionFormat = 'full'
     }
     // Forward the opt-in benchmark/simulation flags (and a heap bump for the larger
-    // sizes) to the forked test JVM. Both are off by default; DecoderBenchmark and
-    // LossSimulation are @EnabledIfSystemProperty.
-    ['ldpc.bench', 'ldpc.sim'].each { flag ->
+    // sizes) to the forked test JVM. All are off by default; their harnesses use
+    // @EnabledIfSystemProperty.
+    ['ldpc.bench', 'ldpc.sim', 'ldpc.calibrate', 'ldpc.calibrate.seeds',
+            'ldpc.calibrate.configs', 'ldpc.calibrate.output',
+            'ldpc.calibrate.maxResidualUnknowns'].each { flag ->
         if (System.getProperty(flag) != null) {
             systemProperty flag, System.getProperty(flag)
             maxHeapSize = '2g'

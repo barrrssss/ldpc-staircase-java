@@ -148,13 +148,35 @@ random loss, 9× on whole-page. The default profile choice holds up.
 `repair first` is 0 by construction: losing only repair symbols leaves the source
 intact, which is the systematic property.
 
+## Scattered-capture D90 calibration (2026-08-05)
+
+A test-only structural rank oracle now makes large recovery-margin studies practical:
+when at least `K` symbols are received, recovery is equivalent to linear independence
+of the erased parity-check columns. One incremental rank pass finds the exact `D` for
+a shuffled removal order without allocating or solving symbol right-hand sides. The
+oracle is regression-checked against the payload decoder.
+
+The resulting calibration covers 231,500 trials across 43 training and 20 untouched
+holdout configurations (`K = 256..16000`, `R/K = 0.05..1.00`, `N1 = 7`) plus a
+focused 20,000-trial graph-seed study. A six-coefficient guarded formula predicts
+the scattered-loss `D90` with sub-code raw RMSE on the holdouts. Full methodology,
+coefficients, data, limitations, and reproduction commands are in
+[`docs/calibration/README.md`](calibration/README.md).
+
+This closes neither the correlated-loss/interleaving gate nor the caller-bounded
+residual-solve gate. In particular, an 8,192-variable residual limit is irrelevant
+when `R <= 8192`, but above that boundary it can make the required margin hundreds or
+thousands of symbols larger than the mathematical rank threshold. A caller must
+model its own bound rather than apply the unbounded formula outside its validated
+domain.
+
 ## What is still missing
 
 These runs cover desktop time and several loss patterns. Not covered here:
 
 - peak RAM as a real measurement rather than the model in `docs/decoder-design.md`;
 - optimized Android recovery time and heap on a weak physical device class;
-- a chosen target decoding-failure probability, and enough trials to measure `D`
-  against it;
+- target-probability calibration for correlated/interleaved physical losses (the
+  scattered 90% target is now measured separately above);
 - an interleaving scheme to test, as opposed to the synthetic page grouping above; and
 - differential testing against an independent implementation.

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Added a test-only structural recovery oracle and opt-in scattered-capture margin
+  calibration harness.
+- Added reproducible D50/D90/D95/D99 datasets, a cross-validated empirical D90
+  formula, and explicit analysis of caller-imposed residual-solve bounds.
+
+These are research and test-tooling changes only. They do not change the runtime
+API, codec behavior, protocol, conformance vectors, or package version.
+
 ## 0.1.1 — 2026-08-04
 
 - Packed residual-solver right-hand sides into `long[]` rows once before elimination,
