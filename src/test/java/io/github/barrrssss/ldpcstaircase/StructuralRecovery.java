@@ -75,6 +75,51 @@ final class StructuralRecovery {
     }
 
     /**
+     * Returns the recovery margin when symbols disappear in indivisible physical
+     * failure domains (for example one whole printed page or one damaged page band).
+     *
+     * <p>{@code domainStarts} contains the inclusive start offset of every domain in
+     * {@code removalOrder}, beginning with zero. If any column in a domain makes the
+     * erased set dependent, the last physically attainable successful state is the
+     * state before that entire domain disappeared. The returned margin therefore
+     * rounds conservatively to the domain boundary instead of pretending that part
+     * of a lost page remains available.
+     */
+    static int marginAtDomainBoundaries(ParityCheckMatrix matrix, int[] removalOrder,
+            int[] domainStarts) {
+        int r = matrix.repairSymbolCount();
+        int n = matrix.encodingSymbolCount();
+        if (removalOrder.length != n) {
+            throw new IllegalArgumentException("removalOrder must contain every symbol");
+        }
+        if (domainStarts.length == 0 || domainStarts[0] != 0) {
+            throw new IllegalArgumentException("domainStarts must begin with zero");
+        }
+
+        Basis basis = new Basis(r);
+        boolean[] seen = new boolean[n];
+        int domain = 0;
+        int domainStart = 0;
+        for (int removed = 0; removed < r; removed++) {
+            while (domain + 1 < domainStarts.length && removed >= domainStarts[domain + 1]) {
+                domain++;
+                domainStart = domainStarts[domain];
+            }
+
+            int column = removalOrder[removed];
+            if (column < 0 || column >= n || seen[column]) {
+                throw new IllegalArgumentException("removalOrder must contain unique valid indices");
+            }
+            seen[column] = true;
+            if (!basis.add(matrix.columnRows[column])) {
+                return r - domainStart;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
      * Returns the margin when a caller also refuses residual systems wider than
      * {@code maxResidualUnknowns}. This models
      * {@link DecodeOptions#withMaxResidualUnknowns(int)} without payload work.

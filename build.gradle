@@ -34,7 +34,9 @@ test {
     // @EnabledIfSystemProperty.
     ['ldpc.bench', 'ldpc.sim', 'ldpc.calibrate', 'ldpc.calibrate.seeds',
             'ldpc.calibrate.configs', 'ldpc.calibrate.output',
-            'ldpc.calibrate.maxResidualUnknowns'].each { flag ->
+            'ldpc.calibrate.maxResidualUnknowns', 'ldpc.interleave',
+            'ldpc.interleave.seeds', 'ldpc.interleave.configs',
+            'ldpc.interleave.output'].each { flag ->
         if (System.getProperty(flag) != null) {
             systemProperty flag, System.getProperty(flag)
             maxHeapSize = '2g'

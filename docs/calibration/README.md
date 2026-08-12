@@ -122,3 +122,38 @@ Committed data:
 
 The simulator seeds, capture-order seeds, quantile convention, and configuration
 grid are deterministic in `RecoveryMarginCalibration`.
+
+## Correlated physical-loss / interleaver calibration
+
+`interleaved-loss-d90.csv` records the 2026-08-12 release-gate run through the
+exact writer layout, including the deliberately blank cells in a ragged final
+transpose. It covers eight `(K,R,frames-per-page)` configurations from
+`K=500,R=250,F=6` through the calibrated decoder boundary
+`K=16000,R=8000,F=48`, six loss models, 20 graph seeds, and 1,000 trials per
+cell (48,000 trials total).
+
+The correlated models remove contiguous print slots, whole pages, quarter-page
+bands, or a deterministic mixture of all three. Page and band losses are treated
+as indivisible physical events, so the last recoverable state is rounded to the
+state before the entire event. A natural symbol-order contiguous-loss control is
+included to measure what the interleaver changes.
+
+The release acceptance rule is:
+
+```text
+correlated_interleaved_D90 <= scattered_D90 + frames_per_page
+```
+
+Every correlated cell passed. The worst observed correlated value was `D90=52`
+at `K=16000,R=8000,F=48`, against a reserve of `20+48=68`. At the same cell,
+natural-order contiguous loss required `D90=3774`; the interleaved contiguous
+model required `D90=28`. These are empirical planning percentiles, not an
+“any K symbols” guarantee.
+
+Regenerate the dataset with:
+
+```powershell
+.\gradlew.bat --% test --rerun-tasks --tests *InterleavedLossCalibration -Dldpc.interleave=1000 -Dldpc.interleave.seeds=20 -Dldpc.interleave.output=docs/calibration/interleaved-loss-d90.csv
+```
+
+The harness throws if any correlated interleaved D90 exceeds the release reserve.
