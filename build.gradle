@@ -55,3 +55,12 @@ tasks.register('generateVectors', JavaExec) {
     mainClass = 'io.github.barrrssss.ldpcstaircase.VectorGenerator'
     args = [project.file('external/ldpc-staircase-spec/vectors').absolutePath]
 }
+
+// the shared specification phase C: prints the flat-vs-forest allocation, retained-size and build-time table.
+// Test-only diagnostic, not part of `check`.
+tasks.register('runFlatGraphMeasurement', JavaExec) {
+    group = 'verification'
+    description = 'Measures flat primitive graph storage against the previous object forest.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.barrrssss.ldpcstaircase.FlatGraphMeasurement'
+}
