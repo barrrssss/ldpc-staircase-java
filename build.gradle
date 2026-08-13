@@ -64,3 +64,14 @@ tasks.register('runFlatGraphMeasurement', JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'io.github.barrrssss.ldpcstaircase.FlatGraphMeasurement'
 }
+
+// the shared specification phase E: D90 study for shapes at the u16 total-symbol ceiling, where R exceeds the
+// decoder's residual-solve bound. Test-only, outside `check`.
+tasks.register('runFormatCeilingMarginStudy', JavaExec) {
+    group = 'verification'
+    description = 'Measures the received margin the 8192 residual bound costs past the calibrated envelope.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.barrrssss.ldpcstaircase.FormatCeilingMarginStudy'
+    if (project.hasProperty('studyArgs')) { args project.studyArgs.split(' ') }
+    maxHeapSize = '4g'
+}
