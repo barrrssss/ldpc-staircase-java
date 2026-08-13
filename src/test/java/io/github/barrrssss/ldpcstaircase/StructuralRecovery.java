@@ -33,7 +33,7 @@ final class StructuralRecovery {
             }
 
             erasedCount++;
-            if (erasedCount > r || !basis.add(matrix.columnRows[column])) {
+            if (erasedCount > r || !basis.add(matrix.columnEntries, matrix.columnOffsets[column], matrix.columnOffsets[column + 1])) {
                 return false;
             }
         }
@@ -66,7 +66,7 @@ final class StructuralRecovery {
             }
             seen[column] = true;
 
-            if (!basis.add(matrix.columnRows[column])) {
+            if (!basis.add(matrix.columnEntries, matrix.columnOffsets[column], matrix.columnOffsets[column + 1])) {
                 return r - removed;
             }
         }
@@ -111,7 +111,7 @@ final class StructuralRecovery {
                 throw new IllegalArgumentException("removalOrder must contain unique valid indices");
             }
             seen[column] = true;
-            if (!basis.add(matrix.columnRows[column])) {
+            if (!basis.add(matrix.columnEntries, matrix.columnOffsets[column], matrix.columnOffsets[column + 1])) {
                 return r - domainStart;
             }
         }
@@ -170,8 +170,8 @@ final class StructuralRecovery {
         int top = 0;
         for (int row = 0; row < r; row++) {
             int unknown = 0;
-            for (int column : matrix.rowColumns[row]) {
-                if (unknownSymbol[column]) {
+            for (int idx = matrix.rowOffsets[row]; idx < matrix.rowOffsets[row + 1]; idx++) {
+                if (unknownSymbol[matrix.rowEntries[idx]]) {
                     unknown++;
                 }
             }
@@ -188,7 +188,8 @@ final class StructuralRecovery {
             }
 
             int recovered = -1;
-            for (int column : matrix.rowColumns[row]) {
+            for (int idx = matrix.rowOffsets[row]; idx < matrix.rowOffsets[row + 1]; idx++) {
+                int column = matrix.rowEntries[idx];
                 if (unknownSymbol[column]) {
                     recovered = column;
                     break;
@@ -200,7 +201,8 @@ final class StructuralRecovery {
 
             unknownSymbol[recovered] = false;
             remaining--;
-            for (int affectedRow : matrix.columnRows[recovered]) {
+            for (int idx = matrix.columnOffsets[recovered]; idx < matrix.columnOffsets[recovered + 1]; idx++) {
+                int affectedRow = matrix.columnEntries[idx];
                 int left = --unknownInRow[affectedRow];
                 if (left == 1) {
                     stack[top++] = affectedRow;
@@ -228,14 +230,16 @@ final class StructuralRecovery {
             words = (dimensions + 63) >>> 6;
         }
 
-        boolean add(int[] setRows) {
+        /** Adds the column whose rows are {@code entries[from, to)} of a flat adjacency array. */
+        boolean add(int[] entries, int from, int to) {
             if (words == 0) {
                 return false;
             }
 
             long[] vector = new long[words];
             int pivot = -1;
-            for (int row : setRows) {
+            for (int idx = from; idx < to; idx++) {
+                int row = entries[idx];
                 vector[row >>> 6] ^= 1L << (row & 63);
                 if (row > pivot) {
                     pivot = row;

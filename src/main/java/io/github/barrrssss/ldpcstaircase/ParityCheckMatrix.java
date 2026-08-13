@@ -17,6 +17,29 @@ import java.util.Arrays;
  * <p>The structure is stored twice, by row and by column, because the encoder walks
  * rows and the decoder walks the rows containing a newly recovered symbol. Both
  * index lists are sorted ascending.
+ *
+ * <h2>Storage (the shared specification section 5)</h2>
+ *
+ * <p>Adjacency lives in four flat primitive arrays in compressed-sparse form rather
+ * than a {@code int[][]} forest:
+ *
+ * <pre>
+ * rowOffsets[R + 1]      rowEntries[entryCount]
+ * columnOffsets[N + 1]   columnEntries[entryCount]
+ * </pre>
+ *
+ * <p>Row {@code i} occupies {@code rowEntries[rowOffsets[i] .. rowOffsets[i+1])};
+ * columns use the same rule. There is no per-row or per-column heap object, which on
+ * a weak Android heap removes {@code 2 * (R + N)} array headers plus the growable
+ * builders the previous construction allocated. Range lookup stays O(1) and the hot
+ * encode/decode loops traverse the flat arrays directly.
+ *
+ * <p>Construction is a deterministic two-pass build over bounded primitive work
+ * buffers. Pass one replays the normative edge-generation sequence exactly — same
+ * PRNG draws in the same order — into a primitive edge list threaded by column so the
+ * duplicate-edge test stays a short chain walk; pass two prefix-sums the degrees and
+ * fills both adjacency directions. No PRNG draw was added, removed, or reordered to
+ * make this representation convenient.
  */
 public final class ParityCheckMatrix {
 
@@ -30,18 +53,23 @@ public final class ParityCheckMatrix {
     private final int entryCount;
 
     // Package-private: LdpcStaircase reads these directly in its hot loops. The public
-    // accessors below hand out clones so callers cannot corrupt the matrix.
-    final int[][] rowColumns;
-    final int[][] columnRows;
+    // accessors below hand out copies so callers cannot corrupt the matrix.
+    final int[] rowOffsets;
+    final int[] rowEntries;
+    final int[] columnOffsets;
+    final int[] columnEntries;
 
     private ParityCheckMatrix(int sourceSymbolCount, int repairSymbolCount, int leftDegree, int seed,
-            int[][] rowColumns, int[][] columnRows, int entryCount) {
+            int[] rowOffsets, int[] rowEntries, int[] columnOffsets, int[] columnEntries,
+            int entryCount) {
         this.sourceSymbolCount = sourceSymbolCount;
         this.repairSymbolCount = repairSymbolCount;
         this.leftDegree = leftDegree;
         this.seed = seed;
-        this.rowColumns = rowColumns;
-        this.columnRows = columnRows;
+        this.rowOffsets = rowOffsets;
+        this.rowEntries = rowEntries;
+        this.columnOffsets = columnOffsets;
+        this.columnEntries = columnEntries;
         this.entryCount = entryCount;
     }
 
@@ -77,22 +105,22 @@ public final class ParityCheckMatrix {
 
     /** The column indices of the ones in {@code row}, ascending. Returns a copy. */
     public int[] rowColumns(int row) {
-        return rowColumns[row].clone();
+        return Arrays.copyOfRange(rowEntries, rowOffsets[row], rowOffsets[row + 1]);
     }
 
     /** The row indices of the ones in {@code column}, ascending. Returns a copy. */
     public int[] columnRows(int column) {
-        return columnRows[column].clone();
+        return Arrays.copyOfRange(columnEntries, columnOffsets[column], columnOffsets[column + 1]);
     }
 
     /** Number of ones in {@code row}. */
     public int rowDegree(int row) {
-        return rowColumns[row].length;
+        return rowOffsets[row + 1] - rowOffsets[row];
     }
 
     /** Number of ones in {@code column}. */
     public int columnDegree(int column) {
-        return columnRows[column].length;
+        return columnOffsets[column + 1] - columnOffsets[column];
     }
 
     /**
@@ -113,36 +141,18 @@ public final class ParityCheckMatrix {
         final int r = repairSymbolCount;
         final int n = k + r;
 
-        IntList[] rows = new IntList[r];
-        for (int i = 0; i < r; i++) {
-            rows[i] = new IntList();
+        if (r == 0) {
+            return new ParityCheckMatrix(k, r, leftDegree, seed, new int[1], new int[0],
+                    new int[n + 1], new int[0], 0);
         }
 
-        IntList[] columns = new IntList[n];
-        for (int c = 0; c < n; c++) {
-            columns[c] = new IntList();
-        }
+        Builder builder = new Builder(k, r, leftDegree);
+        PmmsRandom rng = new PmmsRandom(seed);
+        fillLeftPart(builder, k, r, leftDegree, rng);
+        raiseLowDegreeRows(builder, k, r, rng);
+        fillStaircase(builder, k, r);
 
-        if (r > 0) {
-            PmmsRandom rng = new PmmsRandom(seed);
-            fillLeftPart(rows, columns, k, r, leftDegree, rng);
-            raiseLowDegreeRows(rows, columns, k, r, rng);
-            fillStaircase(rows, columns, k, r);
-        }
-
-        int entries = 0;
-        int[][] rowColumns = new int[r][];
-        for (int i = 0; i < r; i++) {
-            rowColumns[i] = rows[i].toSortedArray();
-            entries += rowColumns[i].length;
-        }
-
-        int[][] columnRows = new int[n][];
-        for (int c = 0; c < n; c++) {
-            columnRows[c] = columns[c].toSortedArray();
-        }
-
-        return new ParityCheckMatrix(k, r, leftDegree, seed, rowColumns, columnRows, entries);
+        return builder.finish(k, r, leftDegree, seed);
     }
 
     /**
@@ -153,8 +163,7 @@ public final class ParityCheckMatrix {
      * separates the consumed prefix from the still-available suffix. Drawing from the
      * suffix and swap-removing the chosen slot is what keeps row degrees balanced.
      */
-    private static void fillLeftPart(IntList[] rows, IntList[] columns, int k, int r, int n1,
-            PmmsRandom rng) {
+    private static void fillLeftPart(Builder builder, int k, int r, int n1, PmmsRandom rng) {
         final int pool = n1 * k;
         int[] u = new int[pool];
         for (int h = pool - 1; h >= 0; h--) {
@@ -167,16 +176,16 @@ public final class ParityCheckMatrix {
                 // Does any unconsumed pool slot still name a row this column lacks?
                 // Scanning first is what guarantees the draw loop below terminates.
                 int i = t;
-                while (i < pool && columns[j].contains(u[i])) {
+                while (i < pool && builder.columnContains(j, u[i])) {
                     i++;
                 }
 
                 if (i < pool) {
                     do {
                         i = t + rng.nextBounded(pool - t);
-                    } while (columns[j].contains(u[i]));
+                    } while (builder.columnContains(j, u[i]));
 
-                    set(rows, columns, u[i], j);
+                    builder.set(u[i], j);
                     u[i] = u[t]; // swap-remove: u[t] has never been chosen
                     t++;
                 } else {
@@ -185,9 +194,9 @@ public final class ParityCheckMatrix {
                     int row;
                     do {
                         row = rng.nextBounded(r);
-                    } while (columns[j].contains(row));
+                    } while (builder.columnContains(j, row));
 
-                    set(rows, columns, row, j);
+                    builder.set(row, j);
                 }
             }
         }
@@ -204,20 +213,19 @@ public final class ParityCheckMatrix {
      * <p>The {@code k >= 2} guard is this specification's degenerate-case rule; RFC 5170
      * assumes a second distinct column always exists.
      */
-    private static void raiseLowDegreeRows(IntList[] rows, IntList[] columns, int k, int r,
-            PmmsRandom rng) {
+    private static void raiseLowDegreeRows(Builder builder, int k, int r, PmmsRandom rng) {
         for (int i = 0; i < r; i++) {
-            if (rows[i].size() == 0) {
-                set(rows, columns, i, rng.nextBounded(k));
+            if (builder.rowDegree(i) == 0) {
+                builder.set(i, rng.nextBounded(k));
             }
 
-            if (rows[i].size() == 1 && k >= 2) {
+            if (builder.rowDegree(i) == 1 && k >= 2) {
                 int j;
                 do {
                     j = rng.nextBounded(k);
-                } while (columns[j].contains(i));
+                } while (builder.columnContains(j, i));
 
-                set(rows, columns, i, j);
+                builder.set(i, j);
             }
         }
     }
@@ -227,17 +235,12 @@ public final class ParityCheckMatrix {
      * repair symbol {@code i} and (except for row 0) repair symbol {@code i - 1}, which
      * is what makes encoding a running XOR. Consumes no PRNG draws.
      */
-    private static void fillStaircase(IntList[] rows, IntList[] columns, int k, int r) {
-        set(rows, columns, 0, k);
+    private static void fillStaircase(Builder builder, int k, int r) {
+        builder.set(0, k);
         for (int i = 1; i < r; i++) {
-            set(rows, columns, i, k + i);
-            set(rows, columns, i, k + i - 1);
+            builder.set(i, k + i);
+            builder.set(i, k + i - 1);
         }
-    }
-
-    private static void set(IntList[] rows, IntList[] columns, int row, int column) {
-        rows[row].add(column);
-        columns[column].add(row);
     }
 
     private static void validate(int sourceSymbolCount, int repairSymbolCount, int leftDegree, int seed) {
@@ -275,6 +278,15 @@ public final class ParityCheckMatrix {
                             + "; got " + ((long) leftDegree * sourceSymbolCount) + ".");
         }
 
+        // The construction emits at most N1*K left-part edges, 2R low-degree corrections
+        // and 2R-1 staircase edges. The flat builder sizes its work buffers from that
+        // exact bound, so it has to fit an int.
+        long maxEdges = (long) leftDegree * sourceSymbolCount + 4L * repairSymbolCount;
+        if (maxEdges > Integer.MAX_VALUE) {
+            throw new LdpcStaircaseException(
+                    "N1 * K + 4R must be <= " + Integer.MAX_VALUE + "; got " + maxEdges + ".");
+        }
+
         if (seed < PmmsRandom.MIN_SEED || seed > PmmsRandom.MAX_SEED) {
             throw new LdpcStaircaseException(
                     "seed must be in [" + PmmsRandom.MIN_SEED + ", " + PmmsRandom.MAX_SEED + "]; got "
@@ -294,10 +306,11 @@ public final class ParityCheckMatrix {
         p = writeU32(out, p, repairSymbolCount);
         p = writeU32(out, p, n);
         for (int i = 0; i < repairSymbolCount; i++) {
-            int[] cols = rowColumns[i];
-            p = writeU32(out, p, cols.length);
-            for (int c : cols) {
-                p = writeU32(out, p, c);
+            int from = rowOffsets[i];
+            int to = rowOffsets[i + 1];
+            p = writeU32(out, p, to - from);
+            for (int idx = from; idx < to; idx++) {
+                p = writeU32(out, p, rowEntries[idx]);
             }
         }
 
@@ -319,27 +332,51 @@ public final class ParityCheckMatrix {
     }
 
     /**
-     * A minimal growable {@code int} list. The matrix is built as ~{@code N1 * K + 2R}
-     * individual insertions across {@code R + N} lists, so avoiding {@code Integer}
-     * boxing here is worth the few lines.
+     * Edge accumulator for the generation pass, backed only by primitive arrays.
+     *
+     * <p>Edges are appended in normative generation order. Each is threaded onto a
+     * singly linked list for its column ({@code columnHead} + {@code nextInColumn}), which
+     * is what makes {@link #columnContains} — the duplicate-edge test the RFC construction
+     * performs on every draw — a short walk instead of a set lookup. Chain order is
+     * irrelevant because it is only ever used for membership, and both adjacency
+     * directions are sorted in {@link #finish}.
+     *
+     * <p>All buffers are sized from the exact upper bound {@code N1*K + 4R}, so the build
+     * never grows or reallocates.
      */
-    private static final class IntList {
-        private int[] values = new int[4];
-        private int size;
+    private static final class Builder {
+        private final int[] edgeRow;
+        private final int[] nextInColumn;
+        private final int[] columnHead;
+        private final int[] rowDegree;
+        private final int[] columnDegree;
+        private int edgeCount;
 
-        void add(int value) {
-            if (size == values.length) {
-                values = Arrays.copyOf(values, size * 2);
-            }
-
-            values[size++] = value;
+        Builder(int k, int r, int n1) {
+            int n = k + r;
+            int maxEdges = n1 * k + 4 * r;
+            this.edgeRow = new int[maxEdges];
+            this.nextInColumn = new int[maxEdges];
+            this.columnHead = new int[n];
+            Arrays.fill(this.columnHead, -1);
+            this.rowDegree = new int[r];
+            this.columnDegree = new int[n];
         }
 
-        boolean contains(int value) {
-            // Lists are short (a source column holds N1 entries, a repair column two),
-            // so a linear scan beats any hashed structure here.
-            for (int i = 0; i < size; i++) {
-                if (values[i] == value) {
+        void set(int row, int column) {
+            int edge = edgeCount++;
+            edgeRow[edge] = row;
+            nextInColumn[edge] = columnHead[column];
+            columnHead[column] = edge;
+            rowDegree[row]++;
+            columnDegree[column]++;
+        }
+
+        /** Whether {@code column} already holds a one in {@code row}. */
+        boolean columnContains(int column, int row) {
+            // Chains are short: a source column holds N1 entries, a repair column two.
+            for (int edge = columnHead[column]; edge >= 0; edge = nextInColumn[edge]) {
+                if (edgeRow[edge] == row) {
                     return true;
                 }
             }
@@ -347,14 +384,50 @@ public final class ParityCheckMatrix {
             return false;
         }
 
-        int size() {
-            return size;
+        int rowDegree(int row) {
+            return rowDegree[row];
         }
 
-        int[] toSortedArray() {
-            int[] result = Arrays.copyOf(values, size);
-            Arrays.sort(result);
-            return result;
+        /** Prefix-sums the degrees and fills both adjacency directions, ascending. */
+        ParityCheckMatrix finish(int k, int r, int n1, int seed) {
+            int n = k + r;
+
+            int[] rowOffsets = new int[r + 1];
+            for (int i = 0; i < r; i++) {
+                rowOffsets[i + 1] = rowOffsets[i] + rowDegree[i];
+            }
+
+            int[] columnOffsets = new int[n + 1];
+            for (int c = 0; c < n; c++) {
+                columnOffsets[c + 1] = columnOffsets[c] + columnDegree[c];
+            }
+
+            int entries = edgeCount;
+            int[] rowEntries = new int[entries];
+            int[] columnEntries = new int[entries];
+            int[] rowCursor = Arrays.copyOf(rowOffsets, r);
+            int[] columnCursor = Arrays.copyOf(columnOffsets, n);
+
+            for (int c = 0; c < n; c++) {
+                for (int edge = columnHead[c]; edge >= 0; edge = nextInColumn[edge]) {
+                    int row = edgeRow[edge];
+                    columnEntries[columnCursor[c]++] = row;
+                    rowEntries[rowCursor[row]++] = c;
+                }
+            }
+
+            // Ascending order is normative: the canonical serialization and the
+            // conformance vectors compare row adjacency element by element.
+            for (int i = 0; i < r; i++) {
+                Arrays.sort(rowEntries, rowOffsets[i], rowOffsets[i + 1]);
+            }
+
+            for (int c = 0; c < n; c++) {
+                Arrays.sort(columnEntries, columnOffsets[c], columnOffsets[c + 1]);
+            }
+
+            return new ParityCheckMatrix(k, r, n1, seed, rowOffsets, rowEntries, columnOffsets,
+                    columnEntries, entries);
         }
     }
 }

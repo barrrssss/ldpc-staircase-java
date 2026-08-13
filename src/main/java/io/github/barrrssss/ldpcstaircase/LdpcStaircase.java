@@ -125,9 +125,10 @@ public final class LdpcStaircase {
             byte[] repair = ensureSymbol(symbols, sourceSymbolCount + p, symbolLength);
             Arrays.fill(repair, (byte) 0);
 
-            int[] columns = matrix.rowColumns[p];
-            for (int idx = 0; idx < columns.length; idx++) {
-                int c = columns[idx];
+            int from = matrix.rowOffsets[p];
+            int to = matrix.rowOffsets[p + 1];
+            for (int idx = from; idx < to; idx++) {
+                int c = matrix.rowEntries[idx];
                 if (c < sourceSymbolCount) {
                     Symbols.xorInto(repair, symbols[c]);
                 }
@@ -154,9 +155,10 @@ public final class LdpcStaircase {
         byte[] accumulator = new byte[symbolLength];
         for (int i = 0; i < repairSymbolCount; i++) {
             Arrays.fill(accumulator, (byte) 0);
-            int[] columns = matrix.rowColumns[i];
-            for (int idx = 0; idx < columns.length; idx++) {
-                Symbols.xorInto(accumulator, symbols[columns[idx]]);
+            int from = matrix.rowOffsets[i];
+            int to = matrix.rowOffsets[i + 1];
+            for (int idx = from; idx < to; idx++) {
+                Symbols.xorInto(accumulator, symbols[matrix.rowEntries[idx]]);
             }
 
             if (!Symbols.isZero(accumulator)) {
@@ -390,11 +392,14 @@ public final class LdpcStaircase {
             this.accumulator = new byte[repairSymbolCount][];
             this.symbolLength = symbolLength;
 
+            final int[] rowOffsets = matrix.rowOffsets;
+            final int[] rowEntries = matrix.rowEntries;
             for (int i = 0; i < repairSymbolCount; i++) {
-                int[] columns = matrix.rowColumns[i];
+                int from = rowOffsets[i];
+                int to = rowOffsets[i + 1];
                 int missing = 0;
-                for (int idx = 0; idx < columns.length; idx++) {
-                    if (!present[columns[idx]]) {
+                for (int idx = from; idx < to; idx++) {
+                    if (!present[rowEntries[idx]]) {
                         missing++;
                     }
                 }
@@ -405,8 +410,8 @@ public final class LdpcStaircase {
                 }
 
                 byte[] accumulated = new byte[symbolLength];
-                for (int idx = 0; idx < columns.length; idx++) {
-                    int c = columns[idx];
+                for (int idx = from; idx < to; idx++) {
+                    int c = rowEntries[idx];
                     if (present[c]) {
                         Symbols.xorInto(accumulated, symbols[c]);
                     }
@@ -428,8 +433,10 @@ public final class LdpcStaircase {
 
     /** SPEC.md section 6.1 — degree-one peeling to a fixed point. */
     private void peel(DecodeState state, Progress progress, long peelCost) {
-        final int[][] rowColumns = matrix.rowColumns;
-        final int[][] columnRows = matrix.columnRows;
+        final int[] rowOffsets = matrix.rowOffsets;
+        final int[] rowEntries = matrix.rowEntries;
+        final int[] columnOffsets = matrix.columnOffsets;
+        final int[] columnEntries = matrix.columnEntries;
         final int[] unknown = state.unknown;
         final byte[][] accumulator = state.accumulator;
 
@@ -450,11 +457,12 @@ public final class LdpcStaircase {
                 continue; // Another equation already resolved this row's last unknown.
             }
 
-            int[] columns = rowColumns[row];
+            int rowFrom = rowOffsets[row];
+            int rowTo = rowOffsets[row + 1];
             int variable = -1;
-            for (int idx = 0; idx < columns.length; idx++) {
-                if (!state.present[columns[idx]]) {
-                    variable = columns[idx];
+            for (int idx = rowFrom; idx < rowTo; idx++) {
+                if (!state.present[rowEntries[idx]]) {
+                    variable = rowEntries[idx];
                     break;
                 }
             }
@@ -468,9 +476,10 @@ public final class LdpcStaircase {
 
             state.recover(variable, value);
 
-            int[] rows = columnRows[variable];
-            for (int idx = 0; idx < rows.length; idx++) {
-                int other = rows[idx];
+            int columnFrom = columnOffsets[variable];
+            int columnTo = columnOffsets[variable + 1];
+            for (int idx = columnFrom; idx < columnTo; idx++) {
+                int other = columnEntries[idx];
                 if (other == row) {
                     continue;
                 }
@@ -495,7 +504,7 @@ public final class LdpcStaircase {
             }
 
             if (progress != null) {
-                work += columns.length + rows.length;
+                work += (rowTo - rowFrom) + (columnTo - columnFrom);
                 progress.set(Math.min(work, peelCost));
             }
         }
@@ -535,9 +544,10 @@ public final class LdpcStaircase {
             }
 
             long[] bits = new long[words];
-            int[] columns = matrix.rowColumns[i];
-            for (int idx = 0; idx < columns.length; idx++) {
-                int column = columnOfSymbol[columns[idx]];
+            int from = matrix.rowOffsets[i];
+            int to = matrix.rowOffsets[i + 1];
+            for (int idx = from; idx < to; idx++) {
+                int column = columnOfSymbol[matrix.rowEntries[idx]];
                 if (column >= 0) {
                     bits[column >>> 6] |= 1L << (column & 63);
                 }

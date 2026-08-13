@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Replaced the `ParityCheckMatrix` `int[][]` row/column adjacency forest with flat
+  primitive compressed-sparse storage (`rowOffsets`/`rowEntries`,
+  `columnOffsets`/`columnEntries`) and a bounded two-pass primitive build, per the shared specification
+  section 5. Construction allocates no object or primitive array per row or column, and
+  the encode/decode hot loops traverse the flat arrays without materializing a row array
+  per visit. PRNG consumption, adjacency, canonical serialization, encoded repair bytes
+  and decode results are unchanged and byte-exact; a new `FlatGraphParityTest`
+  differentially pins the flat build against a test-only copy of the previous
+  object-forest algorithm across boundary, calibrated and randomized cells.
 - Added a test-only structural recovery oracle and opt-in scattered-capture margin
   calibration harness.
 - Added reproducible D50/D90/D95/D99 datasets, a cross-validated empirical D90
