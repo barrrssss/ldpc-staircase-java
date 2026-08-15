@@ -35,10 +35,12 @@ public final class DecodeResult {
     private final int residualUnknownCount;
     private final int residualRowCount;
     private final int residualRank;
+    private final int peelPassCount;
+    private final int residualSolvePassCount;
 
     DecodeResult(boolean complete, Stage stage, int recoveredSourceCount, int recoveredSymbolCount,
             int[] missingSourceIndices, boolean residualSolveSkipped, int residualUnknownCount,
-            int residualRowCount, int residualRank) {
+            int residualRowCount, int residualRank, int peelPassCount, int residualSolvePassCount) {
         this.complete = complete;
         this.stage = stage;
         this.recoveredSourceCount = recoveredSourceCount;
@@ -48,6 +50,8 @@ public final class DecodeResult {
         this.residualUnknownCount = residualUnknownCount;
         this.residualRowCount = residualRowCount;
         this.residualRank = residualRank;
+        this.peelPassCount = peelPassCount;
+        this.residualSolvePassCount = residualSolvePassCount;
     }
 
     /** True when all {@code K} source symbols are present after the decode. */
@@ -112,6 +116,29 @@ public final class DecodeResult {
      */
     public int residualRank() {
         return residualRank;
+    }
+
+    /**
+     * How many times degree-one peeling (SPEC.md section 6.1) ran during this decode.
+     *
+     * <p>SPEC.md section 6 requires the decoder to peel to a fixed point and then stop,
+     * so this is {@code 0} when nothing was missing and {@code 1} otherwise — never more.
+     * The count is reported rather than merely asserted internally because the profile's
+     * two-stage, non-iterating shape is a deliberate and externally meaningful property:
+     * see {@code ProfileInvariantsTest}, which pins it across a wide spread of loss
+     * patterns.
+     */
+    public int peelPassCount() {
+        return peelPassCount;
+    }
+
+    /**
+     * How many times the residual GF(2) solve (SPEC.md section 6.2) ran during this
+     * decode. Never more than {@code 1}: the profile permits at most one solve of the
+     * complete residual system, and forbids returning to peeling afterwards.
+     */
+    public int residualSolvePassCount() {
+        return residualSolvePassCount;
     }
 
     @Override

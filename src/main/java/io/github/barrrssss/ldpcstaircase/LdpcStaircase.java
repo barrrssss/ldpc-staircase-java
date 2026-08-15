@@ -218,7 +218,7 @@ public final class LdpcStaircase {
                 listener.onProgress(1, 1);
             }
 
-            return new DecodeResult(true, DecodeResult.Stage.NONE, 0, 0, NO_INDICES, false, 0, 0, -1);
+            return new DecodeResult(true, DecodeResult.Stage.NONE, 0, 0, NO_INDICES, false, 0, 0, -1, 0, 0);
         }
 
         // Work model for the progress fraction: the peeling pass costs about one visit
@@ -238,7 +238,8 @@ public final class LdpcStaircase {
             }
 
             return new DecodeResult(true, DecodeResult.Stage.PEELING, state.recoveredSource,
-                    state.recoveredTotal, NO_INDICES, false, 0, 0, -1);
+                    state.recoveredTotal, NO_INDICES, false, 0, 0, -1,
+                    state.peelPasses, state.residualSolvePasses);
         }
 
         // Peeling stalled. Everything still unknown is a variable of the residual
@@ -265,7 +266,8 @@ public final class LdpcStaircase {
 
             return new DecodeResult(false, DecodeResult.Stage.PEELING, state.recoveredSource,
                     state.recoveredTotal, missingSourceIndices(symbolPresent, k, missingSource), true,
-                    residualUnknowns, residualRows, -1);
+                    residualUnknowns, residualRows, -1,
+                    state.peelPasses, state.residualSolvePasses);
         }
 
         int rank = residualSolve(state, residualUnknowns, residualRows, progress, peelCost, residualCost);
@@ -278,7 +280,7 @@ public final class LdpcStaircase {
         return new DecodeResult(missingSource == 0, DecodeResult.Stage.RESIDUAL_SOLVE,
                 state.recoveredSource, state.recoveredTotal,
                 missingSourceIndices(symbolPresent, k, missingSource), false, residualUnknowns,
-                residualRows, rank);
+                residualRows, rank, state.peelPasses, state.residualSolvePasses);
     }
 
     /**
@@ -384,6 +386,9 @@ public final class LdpcStaircase {
         final int symbolLength;
         int recoveredSource;
         int recoveredTotal;
+        /** SPEC.md section 6 stage counters; see DecodeResult.peelPassCount(). */
+        int peelPasses;
+        int residualSolvePasses;
 
         DecodeState(byte[][] symbols, boolean[] present, int symbolLength) {
             this.symbols = symbols;
@@ -433,6 +438,7 @@ public final class LdpcStaircase {
 
     /** SPEC.md section 6.1 — degree-one peeling to a fixed point. */
     private void peel(DecodeState state, Progress progress, long peelCost) {
+        state.peelPasses++;
         final int[] rowOffsets = matrix.rowOffsets;
         final int[] rowEntries = matrix.rowEntries;
         final int[] columnOffsets = matrix.columnOffsets;
@@ -524,6 +530,7 @@ public final class LdpcStaircase {
      */
     private int residualSolve(DecodeState state, int unknownCount, int rowCount, Progress progress,
             long peelCost, long residualCost) {
+        state.residualSolvePasses++;
         final int n = encodingSymbolCount;
 
         // Map each still-unknown symbol index onto a column of the residual system.
