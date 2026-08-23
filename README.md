@@ -17,10 +17,16 @@ The library is deliberately **abstract** — symbol byte arrays in, symbol byte 
 out. It performs no I/O, compression, encryption, framing, or page layout, and has
 **no runtime dependencies**.
 
-Current package version: **0.1.1**. It implements specification version **0.1.0**.
+Current package version: **0.1.2**. It implements specification version **0.1.0**.
 See [`CHANGELOG.md`](CHANGELOG.md) for implementation changes and the shared
 specification's [`HISTORY.md`](external/ldpc-staircase-spec/HISTORY.md) for
 cross-implementation decisions.
+
+After the first Maven Central release, depend on it with:
+
+```kotlin
+implementation("io.github.barrrssss:ldpc-staircase:0.1.2")
+```
 
 ## Not an MDS code
 
@@ -96,7 +102,9 @@ run the residual solve at the full repair budget takes about 2 s. See
 
 ## Build and test
 
-Requires JDK 11+ (built at Java language level 11). Uses the Gradle wrapper.
+The build requires **JDK 17 or newer** because Gradle 9 runs on Java 17+. Published
+classes remain **Java 11 compatible**: every Java compile task uses `--release 11`,
+which checks both class-file level and Java 11 API availability. Uses the Gradle wrapper.
 
 ```sh
 git submodule update --init   # pull the spec and conformance vectors
@@ -127,10 +135,28 @@ caller-bound warning, and reproduction options are documented in
 alongside a `SPEC.md` change, review the diff, and commit it in
 `ldpc-staircase-spec`.
 
+## Maven Central publication
+
+The Kotlin DSL build configures the Central Portal target, GPG signing, sources and
+Javadoc JARs, and the required POM metadata. Before the first release, register the
+`io.github.barrrssss` namespace in Central Portal and configure a Portal user token
+plus a published GPG key outside the repository, following the
+[publishing plugin guide](https://vanniktech.github.io/gradle-maven-publish-plugin/central/).
+
+Stage a signed deployment manually with:
+
+```sh
+./gradlew clean build publishToMavenCentral
+```
+
+Then inspect and publish the deployment in Central Portal. Credentials and private
+keys must stay in the user Gradle configuration or environment; this repository does
+not define CI.
+
 ## Status
 
-Private, pre-release. The library is intentionally general-purpose and independent of
-any consuming product.
+Pre-1.0 release candidate. The library is intentionally general-purpose and defines
+only symbol-level coding behavior.
 
 ## License
 
@@ -143,6 +169,7 @@ that grant for anyone who brings a patent claim over the work. For an erasure co
 costs the licensor nothing and is the difference between a user having patent rights and
 having none.
 
-Original work written from RFC 5170 and the internal specification. No OpenFEC or
-other third-party codec source was copied. The provenance and IPR guardrails are
-engineering constraints and not a legal opinion.
+This project independently implements the algorithmic profile described by
+[RFC 5170](https://www.rfc-editor.org/rfc/rfc5170.html). No OpenFEC or other
+third-party codec source was copied. See [`NOTICE`](NOTICE) for attribution. The
+provenance and engineering IPR guardrails are not a legal opinion.

@@ -4,7 +4,7 @@ import com.sun.management.ThreadMXBean;
 import java.lang.management.ManagementFactory;
 
 /**
- * Test-only measurement of the the shared specification phase C change: flat primitive adjacency versus the
+ * Test-only measurement of flat primitive adjacency versus the
  * previous {@code int[][]} forest, at the calibrated release shapes.
  *
  * <p>Two numbers per shape:
@@ -19,7 +19,7 @@ import java.lang.management.ManagementFactory;
  * </ul>
  *
  * <p>Run with {@code ./gradlew runFlatGraphMeasurement}. It is not a unit test: it asserts
- * nothing and exists to produce the figures quoted in the ADR follow-up.
+ * nothing and exists to produce reproducible storage and timing figures.
  */
 public final class FlatGraphMeasurement {
 

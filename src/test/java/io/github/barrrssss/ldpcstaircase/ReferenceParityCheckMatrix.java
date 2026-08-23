@@ -4,13 +4,13 @@ import java.util.Arrays;
 
 /**
  * Test-only reference build of {@code H}, kept verbatim from the object-forest
- * implementation that preceded the the shared specification flat primitive storage.
+ * implementation that preceded the flat primitive storage.
  *
  * <p>Its only purpose is differential coverage: {@link FlatGraphParityTest} asserts
  * that the production {@link ParityCheckMatrix} agrees with this reference row for row,
  * column for column, and byte for byte across boundary, random and calibrated cells.
  * It intentionally allocates a growable object per row and per column — that is exactly
- * the shape the shared specification removed from production, so it must never be used outside tests.
+ * the shape removed from production, so it must never be used outside tests.
  */
 final class ReferenceParityCheckMatrix {
 

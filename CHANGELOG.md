@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.1.2 — 2026-08-23
 
 - Replaced the `ParityCheckMatrix` `int[][]` row/column adjacency forest with flat
   primitive compressed-sparse storage (`rowOffsets`/`rowEntries`,
-  `columnOffsets`/`columnEntries`) and a bounded two-pass primitive build, per the shared specification
-  section 5. Construction allocates no object or primitive array per row or column, and
+  `columnOffsets`/`columnEntries`) and a bounded two-pass primitive build. Construction
+  allocates no object or primitive array per row or column, and
   the encode/decode hot loops traverse the flat arrays without materializing a row array
   per visit. PRNG consumption, adjacency, canonical serialization, encoded repair bytes
   and decode results are unchanged and byte-exact; a new `FlatGraphParityTest`
@@ -15,9 +15,13 @@
   calibration harness.
 - Added reproducible D50/D90/D95/D99 datasets, a cross-validated empirical D90
   formula, and explicit analysis of caller-imposed residual-solve bounds.
+- Added Maven Central publication metadata and migrated the build to Gradle Kotlin DSL.
+- Kept the build on JDK 17+ while enforcing Java 11 API and class compatibility with
+  `--release 11`.
 
-These are research and test-tooling changes only. They do not change the runtime
-API, codec behavior, protocol, conformance vectors, or package version.
+This is a protocol- and API-compatible implementation release. The flat storage
+changes runtime memory use but not graph construction or codec results; the
+specification and conformance vector payloads remain at 0.1.0 and are unchanged.
 
 ## 0.1.1 — 2026-08-04
 

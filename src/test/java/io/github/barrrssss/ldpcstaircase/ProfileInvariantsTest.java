@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test;
  * <p><b>Why this test exists.</b> The profile is defined as much by what it does
  * <em>not</em> do as by what it does, and those exclusions were chosen deliberately —
  * they are what keep this codec clear of the adjacent patented techniques surveyed in
- * the consuming product's IPR review. Absences are uniquely fragile: nothing breaks, no
+ * the profile's engineering IPR review. Absences are uniquely fragile: nothing breaks, no
  * test goes red, and no user notices if a future optimisation quietly reintroduces one.
  * A decoder that returned to peeling after its dense solve, for example, would still be
  * correct, still be fast, and still pass every other test in this repository.

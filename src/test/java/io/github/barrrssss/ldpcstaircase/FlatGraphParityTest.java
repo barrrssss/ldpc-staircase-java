@@ -11,7 +11,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * the shared specification phase C differential coverage: the flat primitive
+ * Differential coverage for the flat primitive
  * {@link ParityCheckMatrix} must agree with the {@link ReferenceParityCheckMatrix}
  * object-forest build on every row, every column, the canonical serialization, and the
  * encoded repair bytes.
@@ -37,7 +37,7 @@ class FlatGraphParityTest {
         cells.add(new Cell(7, 7, N1, 1));
         cells.add(new Cell(8, 7, N1, 99));
 
-        // Calibrated / release-envelope cells (the shared specification gates 6-9, the shared specification).
+        // Calibrated and release-envelope cells.
         cells.add(new Cell(256, 13, N1, 4242));
         cells.add(new Cell(2939, 2939, N1, 20250812));
         cells.add(new Cell(10000, 5000, N1, 777));

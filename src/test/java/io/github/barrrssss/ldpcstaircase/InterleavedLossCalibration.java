@@ -14,8 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
- * Opt-in calibration of correlated paper loss through a deterministic
- * stride-by-page-count interleaver.
+ * Opt-in calibration of correlated loss through a stride-by-domain-count
+ * interleaver.
  *
  * <p>Example:
  * <pre>
@@ -145,7 +145,7 @@ class InterleavedLossCalibration {
         }
     }
 
-    /** Exact transport-layout stride-by-page-count writer permutation. */
+    /** Deterministic stride-by-domain-count writer permutation. */
     private static int[] interleavedPrintOrder(int symbolCount, int framesPerPage) {
         int pageCount = (symbolCount + framesPerPage - 1) / framesPerPage;
         int[] order = new int[pageCount * framesPerPage];

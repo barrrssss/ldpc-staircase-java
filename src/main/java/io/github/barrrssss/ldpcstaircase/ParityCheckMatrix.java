@@ -18,7 +18,7 @@ import java.util.Arrays;
  * rows and the decoder walks the rows containing a newly recovered symbol. Both
  * index lists are sorted ascending.
  *
- * <h2>Storage (the shared specification section 5)</h2>
+ * <h2>Storage</h2>
  *
  * <p>Adjacency lives in four flat primitive arrays in compressed-sparse form rather
  * than a {@code int[][]} forest:

@@ -3,7 +3,7 @@ package io.github.barrrssss.ldpcstaircase;
 import java.util.Random;
 
 /**
- * Test-only D90 study for shapes at the transport u16 total-symbol ceiling, where {@code R} exceeds the
+ * Test-only D90 study for shapes near the unsigned-16-bit total-symbol ceiling, where {@code R} exceeds the
  * decoder's residual-solve bound.
  *
  * <p>Inside the calibrated envelope ({@code R <= 8192}) the caller's bound cannot change
@@ -171,7 +171,7 @@ public final class FormatCeilingMarginStudy {
 
     /**
      * Margin rounded to the last whole failure domain that still decodes within the bound: losing
-     * part of a page is not a state paper can be in.
+     * part of a failure domain is not an observable loss state.
      */
     private static int boundedDomainMargin(ParityCheckMatrix matrix, int[][] domains, int r, int n) {
         int low = 0;
