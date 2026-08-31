@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- Added `ReferenceCorpusTest`, the independent-oracle gate of specification decision
+  0002. It runs the differential corpus committed at
+  `external/ldpc-staircase-spec/reference/corpus.json` through this codec and compares
+  the matrix serialization, encoded symbols, completion flag, recovered symbol count,
+  recovered source and repair index lists, still-missing source indices, whether peeling
+  alone sufficed, and the post-decode source bytes against the answers of the
+  specification repository's dependency-free Python checker. All 31 corpus cases agree.
+  Test-only; nothing here changes the library, its API, or its dependencies.
+- Declared the spec submodule's `vectors/` and `reference/` directories as inputs of the
+  `test` task, so Gradle no longer reports the tests up to date after the vectors or the
+  reference checker change.
+- Adopted the `SPEC.md` section 6 clarification that decoding requires at least one
+  present symbol. This implementation already enforced it; the specification now states
+  it. No behavior changed.
+
 ## 0.1.2 — 2026-08-23
 
 - Replaced the `ParityCheckMatrix` `int[][]` row/column adjacency forest with flat

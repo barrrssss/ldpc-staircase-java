@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.JavaExec
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.jvm.tasks.Jar
@@ -62,6 +63,15 @@ tasks.test {
         showStandardStreams = true
         exceptionFormat = TestExceptionFormat.FULL
     }
+
+    // ConformanceTest and ReferenceCorpusTest read the spec submodule at run time, so
+    // Gradle must not call the task up to date after the vectors, the independent
+    // reference checker, or its differential corpus change. Declared optional because a
+    // fresh clone without submodules still has to configure.
+    inputs.files(
+        fileTree("external/ldpc-staircase-spec/vectors"),
+        fileTree("external/ldpc-staircase-spec/reference"),
+    ).withPropertyName("specSubmodule").optional().withPathSensitivity(PathSensitivity.RELATIVE)
 
     // All research harnesses are opt-in and excluded from ordinary build/check runs.
     listOf(

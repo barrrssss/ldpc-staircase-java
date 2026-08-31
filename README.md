@@ -109,13 +109,30 @@ which checks both class-file level and Java 11 API availability. Uses the Gradle
 ```sh
 git submodule update --init   # pull the spec and conformance vectors
 ./gradlew build               # compile + run all tests
-./gradlew test                # PmmsRandomTest + ParityCheckMatrixTest + LdpcStaircaseTest + ConformanceTest
+./gradlew test                # unit tests + ConformanceTest + ReferenceCorpusTest
 ```
 
 `ConformanceTest` is the cross-language gate: it parses
 `external/ldpc-staircase-spec/vectors/MANIFEST.json` and asserts byte-exact
 reproduction of every PRNG, matrix, encode, and decode vector (and verifies the
 SHA-256 of each blob).
+
+`ReferenceCorpusTest` is the independent-oracle gate of specification decision 0002.
+Cross-language agreement alone cannot rule out one shared misreading of `SPEC.md`,
+because this repository also generates the vectors. So the spec repo carries a
+dependency-free Python checker derived from the specification rather than from either
+implementation, plus a differential corpus at
+`external/ldpc-staircase-spec/reference/corpus.json`. The test runs that corpus through
+this codec and compares every field with the checker's own answer.
+
+It needs Python 3.11+ on `PATH` and runs the checker as an ordinary subprocess. Without
+an interpreter the corpus cases are skipped so a developer build still runs; the release
+gate turns that into a failure:
+
+```sh
+./gradlew test -Dldpc.referenceCorpus.required=true    # or LDPC_REFERENCE_CORPUS_REQUIRED=1
+./gradlew test -Dldpc.python=/path/to/python3          # or LDPC_PYTHON
+```
 
 Three opt-in measurement harnesses are excluded from normal runs:
 
