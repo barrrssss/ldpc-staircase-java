@@ -80,6 +80,13 @@ public final class VectorGenerator {
         matrices.add(matrixCase("mtx-k1-r1-n1_1-s7", 1, 1, 1, 7));
         matrices.add(matrixCase("mtx-k4-r0-n1_1-s1", 4, 0, 1, 1));
         matrices.add(matrixCase("mtx-k250-r125-n1_7-s123456", 250, 125, 7, 123456));
+        // SPEC.md section 4.3 coverage. Every case above leaves the low-degree-raising
+        // pass with nothing to do: each has exactly N1*K + (2R - 1) entries, so the pass
+        // adds none. These three put N1*K at or below R so rows really do come out of
+        // section 4.2 below degree two, and the pass has to raise them.
+        matrices.add(matrixCase("mtx-k2-r8-n1_1-s1", 2, 8, 1, 1));
+        matrices.add(matrixCase("mtx-k8-r16-n1_2-s3", 8, 16, 2, 3));
+        matrices.add(matrixCase("mtx-k3-r6-n1_1-smax", 3, 6, 1, PmmsRandom.MAX_SEED));
         json.append(String.join(",\n", matrices)).append("\n");
         json.append("  ],\n");
 
@@ -91,6 +98,9 @@ public final class VectorGenerator {
         encodes.add(encodeCase("enc-k4-r0-n1_1-s1-len16", 4, 0, 1, 1, 16, 1004));
         encodes.add(encodeCase(DECODE_CASE, DECODE_K, DECODE_R, DECODE_N1, DECODE_SEED,
                 DECODE_SYMBOL_LENGTH, 1005));
+        // Repair bytes over a matrix that section 4.3 actually modified, at an odd
+        // symbol length.
+        encodes.add(encodeCase("enc-k2-r8-n1_1-s1-len5", 2, 8, 1, 1, 5, 1006));
         json.append(String.join(",\n", encodes)).append("\n");
         json.append("  ],\n");
 
