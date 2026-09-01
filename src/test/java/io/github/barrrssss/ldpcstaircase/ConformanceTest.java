@@ -58,7 +58,7 @@ class ConformanceTest {
 
     @Test
     void manifestHasExpectedSections() {
-        assertEquals(1, Json.asInt(manifest.get("manifestVersion")), "unexpected manifestVersion");
+        assertEquals(2, Json.asInt(manifest.get("manifestVersion")), "unexpected manifestVersion");
         for (String section : new String[] {"prngRaw", "prngBounded", "matrix", "encode", "decode",
                 "files"}) {
             assertTrue(manifest.get(section) instanceof List, section + " section missing");
@@ -220,7 +220,7 @@ class ConformanceTest {
 
                 boolean[] present = new boolean[source.n];
                 Arrays.fill(present, true);
-                for (int index : Json.asIntArray(testCase.get("missing"))) {
+                for (int index : missingIndices(name, testCase)) {
                     present[index] = false;
                 }
 
@@ -252,6 +252,40 @@ class ConformanceTest {
         }
 
         return tests;
+    }
+
+    /**
+     * A decode case's missing-index list, in whichever of the two forms of SPEC.md
+     * section 7 it carries: inline {@code missing}, or a {@code missingBlob} of
+     * big-endian {@code u32} indices. Exactly one must be present — a case whose form
+     * this reader does not understand must fail loudly rather than decode a set it
+     * silently treated as complete.
+     */
+    private static int[] missingIndices(String name, Map<String, Object> testCase) {
+        Object inline = testCase.get("missing");
+        Object blob = testCase.get("missingBlob");
+        assertTrue(inline == null ^ blob == null,
+                name + ": exactly one of missing / missingBlob must be present");
+
+        if (inline != null) {
+            return Json.asIntArray(inline);
+        }
+
+        byte[] bytes = readVector((String) blob);
+        assertEquals(0, bytes.length % 4, name + ": missingBlob length must be a multiple of 4");
+        int[] missing = new int[bytes.length / 4];
+        for (int i = 0; i < missing.length; i++) {
+            missing[i] = ((bytes[i * 4] & 0xFF) << 24)
+                    | ((bytes[i * 4 + 1] & 0xFF) << 16)
+                    | ((bytes[i * 4 + 2] & 0xFF) << 8)
+                    | (bytes[i * 4 + 3] & 0xFF);
+        }
+
+        for (int i = 1; i < missing.length; i++) {
+            assertTrue(missing[i] > missing[i - 1], name + ": missingBlob must be strictly ascending");
+        }
+
+        return missing;
     }
 
     /** One encode case's parameters and committed symbol blobs. */

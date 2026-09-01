@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Adopted specification **0.1.2**. It adds production-scale vectors at `K = 16000`,
+  `R = 8192`, `N1 = 7` — one matrix, one encode, and two decode cases. This repository
+  already exercised shapes that large in `FlatGraphParityTest` and the calibration
+  studies, but those are internal tests, not a cross-runtime oracle: nothing committed
+  made Java and .NET agree on a single byte above `K = 250`. They now agree at the top of
+  the calibrated envelope, including a residual solve thousands of unknowns wide.
+- Extended `VectorGenerator` with the large cases. Their loss patterns are drawn from
+  fixed seeds rather than searched: a search replays a full decode per attempt, and at
+  this shape one residual solve is three orders of magnitude more work than one at
+  `K = 120`. The stage each large case must reach is asserted during generation, so a case
+  cannot quietly stop covering what its name says it covers. Confirmed first that a
+  no-change regeneration produces a zero diff, then that the new manifest is additive in
+  every section.
+- `ConformanceTest` reads the `missingBlob` form of a decode case's missing list and
+  expects `manifestVersion` 2. A case must carry exactly one of `missing` / `missingBlob`;
+  a reader that silently skipped the field it did not understand would report a pass on a
+  decode it never ran.
+
 - Adopted specification **0.1.1**. It adds three matrix vectors and one encode vector that
   exercise `SPEC.md` section 4.3, the low-degree-raising pass that no committed vector
   previously caused to add a single entry. Every 0.1.0 vector is byte-identical at 0.1.1,

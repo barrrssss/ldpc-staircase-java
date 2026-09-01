@@ -35,6 +35,30 @@ public final class VectorGenerator {
     private static final int DECODE_SYMBOL_LENGTH = 24;
     private static final String DECODE_CASE = "enc-k120-r60-n1_7-s31337-len24";
 
+    // A production-scale shape at the top of the profile's calibrated envelope. Every
+    // case above is small enough to reason about by hand, which is what makes them good
+    // at pinning the algorithms; none of them reaches the scale a consumer actually
+    // ships, where the matrix build draws six figures of PRNG values and the residual
+    // solve is thousands of columns wide. This one does.
+    //
+    // The symbol length is deliberately short. Symbols are combined by XOR, so symbol
+    // length is independent of everything the large shape exercises, and a short one
+    // keeps the committed blobs to a few hundred kilobytes.
+    private static final int LARGE_K = 16000;
+    private static final int LARGE_R = 8192;
+    private static final int LARGE_N1 = 7;
+    private static final int LARGE_SEED = 8191;
+    private static final int LARGE_SYMBOL_LENGTH = 8;
+    private static final String LARGE_CASE = "enc-k16000-r8192-n1_7-s8191-len8";
+
+    /**
+     * Missing-index lists longer than this are written as a blob instead of being
+     * inlined. The large decode cases lose thousands of symbols; inlining those lists
+     * would make the manifest mostly integers and unreviewable. Every existing case is
+     * far below the threshold, so their manifest text is unchanged.
+     */
+    private static final int INLINE_MISSING_MAX = 256;
+
     private final Path directory;
     private final List<String[]> files = new ArrayList<>(); // path, length, sha256
 
@@ -52,7 +76,7 @@ public final class VectorGenerator {
     private void generate() throws IOException {
         StringBuilder json = new StringBuilder();
         json.append("{\n");
-        json.append("  \"manifestVersion\": 1,\n");
+        json.append("  \"manifestVersion\": 2,\n");
         json.append("  \"description\": ").append(quote(
                         "ldpc-staircase conformance vectors for the constrained RFC 5170 "
                                 + "LDPC-Staircase profile. Symbol payloads are produced by a documented "
@@ -87,6 +111,10 @@ public final class VectorGenerator {
         matrices.add(matrixCase("mtx-k2-r8-n1_1-s1", 2, 8, 1, 1));
         matrices.add(matrixCase("mtx-k8-r16-n1_2-s3", 8, 16, 2, 3));
         matrices.add(matrixCase("mtx-k3-r6-n1_1-smax", 3, 6, 1, PmmsRandom.MAX_SEED));
+        // Production scale: 128,383 entries over 8,192 rows, built from 112,000 bounded
+        // PRNG draws. A serialization that agrees here agrees at any shape a consumer
+        // will ask for.
+        matrices.add(matrixCase("mtx-k16000-r8192-n1_7-s8191", LARGE_K, LARGE_R, LARGE_N1, LARGE_SEED));
         json.append(String.join(",\n", matrices)).append("\n");
         json.append("  ],\n");
 
@@ -101,6 +129,9 @@ public final class VectorGenerator {
         // Repair bytes over a matrix that section 4.3 actually modified, at an odd
         // symbol length.
         encodes.add(encodeCase("enc-k2-r8-n1_1-s1-len5", 2, 8, 1, 1, 5, 1006));
+        // Production scale: 16,000 source and 8,192 repair symbols over the matrix above.
+        encodes.add(encodeCase(LARGE_CASE, LARGE_K, LARGE_R, LARGE_N1, LARGE_SEED,
+                LARGE_SYMBOL_LENGTH, 1007));
         json.append(String.join(",\n", encodes)).append("\n");
         json.append("  ],\n");
 
@@ -199,20 +230,20 @@ public final class VectorGenerator {
      * over loss patterns so that the committed vectors genuinely exercise all three
      * outcomes of SPEC.md section 6.
      */
-    private List<String> decodeCases() {
+    private List<String> decodeCases() throws IOException {
         int n = DECODE_K + DECODE_R;
         byte[][] encoded = encodedSymbols(DECODE_K, DECODE_R, DECODE_N1, DECODE_SEED,
                 DECODE_SYMBOL_LENGTH, 1005);
         LdpcStaircase codec = LdpcStaircase.create(DECODE_K, DECODE_R, DECODE_SEED, DECODE_N1);
 
         List<String> cases = new ArrayList<>();
-        cases.add(decodeCase("dec-nothing-missing", codec, encoded, new int[0]));
+        cases.add(decodeCase("dec-nothing-missing", DECODE_CASE, codec, encoded, new int[0]));
 
         int[] repairOnly = new int[DECODE_R];
         for (int p = 0; p < DECODE_R; p++) {
             repairOnly[p] = DECODE_K + p;
         }
-        cases.add(decodeCase("dec-all-repair-missing", codec, encoded, repairOnly));
+        cases.add(decodeCase("dec-all-repair-missing", DECODE_CASE, codec, encoded, repairOnly));
 
         // Half the repair budget spent on source symbols: comfortably inside the code's
         // capability and expected to peel cleanly.
@@ -220,7 +251,7 @@ public final class VectorGenerator {
         for (int i = 0; i < easy.length; i++) {
             easy[i] = i * 4;
         }
-        cases.add(decodeCase("dec-source-band", codec, encoded, easy));
+        cases.add(decodeCase("dec-source-band", DECODE_CASE, codec, encoded, easy));
 
         // Peeling is searched at half the repair budget: at the full budget the graph is
         // close enough to its threshold that peeling essentially always stalls, which is
@@ -229,18 +260,81 @@ public final class VectorGenerator {
         addSearched(cases, "dec-max-loss-residual", codec, encoded, n, Outcome.RESIDUAL, DECODE_R);
         addSearched(cases, "dec-max-loss-failure", codec, encoded, n, Outcome.FAILURE, DECODE_R);
 
+        cases.addAll(largeDecodeCases());
+
         return cases;
     }
 
+    /**
+     * Builds the production-scale decode cases over {@link #LARGE_CASE}.
+     *
+     * <p>Unlike the small cases these are not searched. A search replays a full decode
+     * per attempt, and at this shape a single residual solve is three orders of magnitude
+     * more work than one at {@code K = 120}; twenty thousand of them is not a thing a
+     * generator can do. The loss patterns are instead drawn from fixed SplitMix64 seeds,
+     * which is equally reproducible, and the stage each case must reach is asserted so a
+     * case cannot quietly stop covering what its name says it covers.
+     */
+    private List<String> largeDecodeCases() throws IOException {
+        int n = LARGE_K + LARGE_R;
+        byte[][] encoded = encodedSymbols(LARGE_K, LARGE_R, LARGE_N1, LARGE_SEED,
+                LARGE_SYMBOL_LENGTH, 1007);
+        LdpcStaircase codec = LdpcStaircase.create(LARGE_K, LARGE_R, LARGE_SEED, LARGE_N1);
+
+        List<String> cases = new ArrayList<>();
+
+        // Half the repair budget, comfortably inside the code's capability: peeling alone
+        // carries it, over a graph with 24,192 nodes.
+        cases.add(decodeCase("dec-large-peeling", LARGE_CASE, codec, encoded,
+                deterministicLoss(n, LARGE_R / 2, 0x1A46E1000L), DecodeResult.Stage.PEELING));
+
+        // Three quarters of it: peeling stalls and the residual solve finishes the
+        // recovery. This is the case no small vector can stand in for — the solve here is
+        // a system of thousands of unknowns, where an implementation that gets the
+        // elimination order or the pivot rule subtly wrong still passes at K = 120.
+        cases.add(decodeCase("dec-large-residual", LARGE_CASE, codec, encoded,
+                deterministicLoss(n, LARGE_R * 3 / 4, 0x1A46E1800L),
+                DecodeResult.Stage.RESIDUAL_SOLVE));
+
+        return cases;
+    }
+
+    /**
+     * Draws {@code lossCount} distinct indices below {@code n} from a fixed seed and
+     * returns them ascending.
+     */
+    private static int[] deterministicLoss(int n, int lossCount, long seed) {
+        SplitMix64 rng = new SplitMix64(seed);
+        boolean[] chosen = new boolean[n];
+        int drawn = 0;
+        while (drawn < lossCount) {
+            int index = rng.nextInt(n);
+            if (!chosen[index]) {
+                chosen[index] = true;
+                drawn++;
+            }
+        }
+
+        int[] missing = new int[lossCount];
+        int at = 0;
+        for (int i = 0; i < n; i++) {
+            if (chosen[i]) {
+                missing[at++] = i;
+            }
+        }
+
+        return missing;
+    }
+
     private void addSearched(List<String> cases, String name, LdpcStaircase codec, byte[][] encoded,
-            int n, Outcome outcome, int lossCount) {
+            int n, Outcome outcome, int lossCount) throws IOException {
         int[] missing = search(codec, encoded, n, outcome, lossCount);
         if (missing == null) {
             System.out.println("WARNING: no " + outcome + " case found at " + lossCount + " losses");
             return;
         }
 
-        cases.add(decodeCase(name, codec, encoded, missing));
+        cases.add(decodeCase(name, DECODE_CASE, codec, encoded, missing));
     }
 
     private enum Outcome { PEELING, RESIDUAL, FAILURE }
@@ -297,7 +391,19 @@ public final class VectorGenerator {
         return null;
     }
 
-    private String decodeCase(String name, LdpcStaircase codec, byte[][] encoded, int[] missing) {
+    private String decodeCase(String name, String encodeCase, LdpcStaircase codec, byte[][] encoded,
+            int[] missing) throws IOException {
+        return decodeCase(name, encodeCase, codec, encoded, missing, null);
+    }
+
+    /**
+     * Emits one decode case. When {@code requiredStage} is non-null the decode must have
+     * reached exactly that stage: the large cases are named for the stage they exist to
+     * cover, and a drift to a different one would leave that stage uncovered under a name
+     * claiming otherwise.
+     */
+    private String decodeCase(String name, String encodeCase, LdpcStaircase codec, byte[][] encoded,
+            int[] missing, DecodeResult.Stage requiredStage) throws IOException {
         int n = codec.encodingSymbolCount();
         boolean[] present = new boolean[n];
         Arrays.fill(present, true);
@@ -306,9 +412,9 @@ public final class VectorGenerator {
         }
 
         DecodeResult result = replay(codec, encoded, present, DecodeOptions.defaults());
-        List<String> missingText = new ArrayList<>();
-        for (int index : missing) {
-            missingText.add(Integer.toString(index));
+        if (requiredStage != null && result.stage() != requiredStage) {
+            throw new IllegalStateException(name + ": expected the decode to reach "
+                    + requiredStage + " but it reached " + result.stage());
         }
 
         List<String> stillMissing = new ArrayList<>();
@@ -316,12 +422,41 @@ public final class VectorGenerator {
             stillMissing.add(Integer.toString(index));
         }
 
-        return "    {\"name\": " + quote(name) + ", \"encodeCase\": " + quote(DECODE_CASE)
+        return "    {\"name\": " + quote(name) + ", \"encodeCase\": " + quote(encodeCase)
                 + ", \"expectComplete\": " + result.isComplete()
                 + ", \"expectStage\": " + quote(result.stage().name())
                 + ", \"expectRecoveredSymbols\": " + result.recoveredSymbolCount()
-                + ",\n     \"missing\": [" + String.join(", ", missingText) + "],"
+                + ",\n     " + missingField(name, missing) + ","
                 + "\n     \"expectMissingSource\": [" + String.join(", ", stillMissing) + "]}";
+    }
+
+    /**
+     * Renders a case's missing-index list: inline for the small cases, and as a
+     * {@code missingBlob} reference past {@link #INLINE_MISSING_MAX} entries.
+     */
+    private String missingField(String caseName, int[] missing) throws IOException {
+        if (missing.length <= INLINE_MISSING_MAX) {
+            List<String> missingText = new ArrayList<>();
+            for (int index : missing) {
+                missingText.add(Integer.toString(index));
+            }
+
+            return "\"missing\": [" + String.join(", ", missingText) + "]";
+        }
+
+        // Big-endian u32 indices, ascending - SPEC.md section 7.2.
+        byte[] blob = new byte[missing.length * 4];
+        for (int i = 0; i < missing.length; i++) {
+            int value = missing[i];
+            blob[i * 4] = (byte) (value >>> 24);
+            blob[i * 4 + 1] = (byte) (value >>> 16);
+            blob[i * 4 + 2] = (byte) (value >>> 8);
+            blob[i * 4 + 3] = (byte) value;
+        }
+
+        String file = caseName + "-missing.bin";
+        write(file, blob);
+        return "\"missingBlob\": " + quote(file);
     }
 
     // ------------------------------------------------------------------
