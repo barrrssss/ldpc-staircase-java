@@ -8,6 +8,8 @@ is a performance guarantee.
 - Machine: AMD Ryzen 7 5700U (8C/16T), Windows 11 Pro
 - Runtime: OpenJDK 25.0.3, single warmed JVM, wall clock
 - Library: `ldpc-staircase-java` 0.1.0
+- Status reconciled: 2026-09-01 against the later calibration, Android-runtime,
+  and independent-checker evidence described below
 
 Reproduce with:
 
@@ -163,20 +165,38 @@ the scattered-loss `D90` with sub-code raw RMSE on the holdouts. Full methodolog
 coefficients, data, limitations, and reproduction commands are in
 [`docs/calibration/README.md`](calibration/README.md).
 
-This closes neither the correlated-loss/interleaving gate nor the caller-bounded
-residual-solve gate. In particular, an 8,192-variable residual limit is irrelevant
-when `R <= 8192`, but above that boundary it can make the required margin hundreds or
-thousands of symbols larger than the mathematical rank threshold. A caller must
-model its own bound rather than apply the unbounded formula outside its validated
-domain.
+At the time of this 2026-08-05 study, correlated-loss/interleaving calibration and
+caller-bounded residual behavior were still open. The later 2026-08-12 campaign in
+[`docs/calibration/README.md`](calibration/README.md) closed the first question for
+the tested envelope: 48,000 trials through `K=16000,R=8000,F=48` validated the exact
+blank-preserving transpose layout, and every correlated interleaved D90 stayed within
+`scattered_D90 + frames_per_page`.
 
-## What is still missing
+The caller-bound qualification remains important outside that envelope. The same
+calibration note shows that an 8,192-variable residual limit cannot affect a
+configuration with `R <= 8192`, but above that boundary it can make the required
+margin hundreds or thousands of symbols larger than the mathematical rank threshold.
+A caller must model its own bound rather than apply the unbounded formula outside its
+validated domain.
 
-These runs cover desktop time and several loss patterns. Not covered here:
+## Later evidence and remaining scope
 
-- peak RAM as a real measurement rather than the model in `docs/decoder-design.md`;
-- optimized Android recovery time and heap on a weak physical device class;
-- target-probability calibration for correlated/interleaved physical losses (the
-  scattered 90% target is now measured separately above);
-- an interleaving scheme to test, as opposed to the synthetic page grouping above; and
-- differential testing against an independent implementation.
+The initial list of missing work is no longer current:
+
+- **Correlated loss and interleaving are measured.** The committed calibration cited
+  above tests the real blank-preserving layout rather than only synthetic grouping.
+- **Optimized Android time is measured on physical ARM64, and peak heap is measured in
+  a constrained ART integration environment.** Those application-level measurements
+  include retained scan-session ownership and therefore supersede a library-object
+  model for release planning. They live with the consuming application rather than in
+  this product-independent library. A specific low-end handset CPU benchmark is still
+  not claimed.
+- **Independent differential validation is implemented, but not formally closed.** The
+  specification submodule's dependency-free Python checker verifies every conformance
+  vector and agrees with Java, .NET, and two blind reimplementations on the committed
+  differential corpus. Decision 0002 still requires a human source-independence
+  confirmation and addition of the checker to a written pre-release checklist.
+
+A standalone library-only retained-heap profile could still be useful for consumers,
+but its absence is no longer an unmeasured release-memory gap: end-to-end ART peak heap
+has been measured on the ownership path that actually ships.
